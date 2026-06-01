@@ -1,0 +1,15 @@
+meta {
+  name: Integration Platforms
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/integrations/platforms
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

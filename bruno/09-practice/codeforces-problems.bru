@@ -1,0 +1,17 @@
+meta {
+  name: Codeforces Problems
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/practice/codeforces/problems
+  body: none
+  auth: none
+}
+
+params:query {
+  handle: {{cfHandle}}
+  page: 1
+  limit: 20
+}

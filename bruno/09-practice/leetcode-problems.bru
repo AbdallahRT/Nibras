@@ -1,0 +1,17 @@
+meta {
+  name: LeetCode Problems
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/practice/leetcode/problems
+  body: none
+  auth: none
+}
+
+params:query {
+  handle: {{lcHandle}}
+  page: 1
+  limit: 20
+}

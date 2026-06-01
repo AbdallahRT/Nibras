@@ -36,4 +36,15 @@ export const validationSchema = Joi.object({
   NIBRAS_EMAIL_FROM: Joi.string().default('Nibras <noreply@nibras.dev>'),
   SESSION_TTL_DAYS: Joi.number().integer().min(1).max(365).default(30),
   MAGIC_LINK_TTL_SECONDS: Joi.number().integer().min(60).max(3600).default(300),
+
+  COMPETITIONS_SYNC_ENABLED: Joi.boolean()
+    .truthy('true')
+    .falsy('false')
+    .default(true),
+  CONTEST_SYNC_CRON: Joi.string().default('*/15 * * * *'),
+  PROBLEM_SYNC_CRON: Joi.string().default('0 */6 * * *'),
+  ACCOUNT_STATS_SYNC_CRON: Joi.string().default('0 */6 * * *'),
+  RANKING_CALC_CRON: Joi.string().default('*/30 * * * *'),
+  CONTEST_REMINDER_CRON: Joi.string().default('* * * * *'),
+  POST_CONTEST_CRON: Joi.string().default('*/10 * * * *'),
 });

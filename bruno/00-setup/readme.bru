@@ -1,0 +1,24 @@
+meta {
+  name: Setup — read first
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/ping
+  body: none
+  auth: none
+}
+
+docs {
+  # Session setup
+
+  1. Start API: `npm run start:dev`
+  2. Run: `npm run dev:session`
+  3. Copy the `web_…` line
+  4. Bruno → Environments → **local** → paste into **token** under **vars** (not Secret vars)
+  5. Select **local** as active environment (top-right dropdown)
+  6. Run **03-users / Get Me**
+
+  If Get Me returns INVALID_SESSION: generate a fresh token and ensure API is running.
+}

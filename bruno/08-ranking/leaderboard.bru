@@ -1,0 +1,15 @@
+meta {
+  name: Leaderboard
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/ranking
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -10,6 +10,7 @@ import { AuthModule } from '@modules/auth/auth.module';
 import { HealthModule } from '@modules/health/health.module';
 import { RbacModule } from '@modules/rbac/rbac.module';
 import { UsersModule } from '@modules/users/users.module';
+import { CompetitionsModule } from '@modules/competitions/competitions.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { UsersModule } from '@modules/users/users.module';
     RbacModule,
     AuthModule,
     UsersModule,
+    CompetitionsModule,
     HealthModule,
   ],
   providers: [

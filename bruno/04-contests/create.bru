@@ -1,0 +1,36 @@
+meta {
+  name: Create Contest
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/contests
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  const start = new Date(Date.now() - 60000).toISOString();
+  const end = new Date(Date.now() + 3600000).toISOString();
+  const pid = bru.getVar("problemId");
+  req.setBody({
+    name: "Bruno Test Contest",
+    description: "Created from Bruno collection",
+    startDate: start,
+    endDate: end,
+    problemIds: pid ? [pid] : [],
+  });
+}
+
+script:post-response {
+  if (res.status === 201 && res.body.id) {
+    bru.setVar("contestId", res.body.id);
+    bru.setEnvVar("contestId", res.body.id);
+    console.log("contestId =", res.body.id);
+  }
+}

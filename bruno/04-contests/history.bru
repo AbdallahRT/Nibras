@@ -1,0 +1,15 @@
+meta {
+  name: Contest History
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/contests/history
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

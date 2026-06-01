@@ -1,0 +1,15 @@
+meta {
+  name: My Ranking
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/ranking/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

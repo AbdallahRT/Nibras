@@ -1,0 +1,21 @@
+meta {
+  name: HackerRank Connect
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/integrations/hackerrank/connect
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "handle": "{{hrHandle}}"
+  }
+}

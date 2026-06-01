@@ -1,0 +1,22 @@
+meta {
+  name: Update Contest
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{baseUrl}}/contests/{{contestId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "Bruno Test Contest (updated)",
+    "description": "Updated via Bruno"
+  }
+}

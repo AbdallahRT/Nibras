@@ -1,0 +1,15 @@
+meta {
+  name: Contests Accounts Alias
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/contests/accounts
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

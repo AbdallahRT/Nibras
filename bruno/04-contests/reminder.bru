@@ -1,0 +1,22 @@
+meta {
+  name: Set Contest Reminder
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/contests/user-contests/{{contestId}}/reminder
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "on": true,
+    "minutesBefore": 30
+  }
+}
