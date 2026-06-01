@@ -19,6 +19,16 @@ export interface RedisConfig {
   ttlSeconds: number;
 }
 
+export interface CompetitionsConfig {
+  syncEnabled: boolean;
+  contestSyncCron: string;
+  problemSyncCron: string;
+  accountStatsSyncCron: string;
+  rankingCalcCron: string;
+  contestReminderCron: string;
+  postContestCron: string;
+}
+
 export interface AuthConfig {
   secret: string;
   webBaseUrl: string;
@@ -36,6 +46,7 @@ export interface NibrasConfig {
   mongo: MongoConfig;
   redis: RedisConfig;
   auth: AuthConfig;
+  competitions: CompetitionsConfig;
 }
 
 export const configuration = (): NibrasConfig => ({
@@ -77,5 +88,14 @@ export const configuration = (): NibrasConfig => ({
     apiBaseUrl:
       process.env.API_BASE_URL ??
       `http://localhost:${process.env.PORT ?? '3000'}`,
+  },
+  competitions: {
+    syncEnabled: process.env.COMPETITIONS_SYNC_ENABLED !== 'false',
+    contestSyncCron: process.env.CONTEST_SYNC_CRON ?? '*/15 * * * *',
+    problemSyncCron: process.env.PROBLEM_SYNC_CRON ?? '0 */6 * * *',
+    accountStatsSyncCron: process.env.ACCOUNT_STATS_SYNC_CRON ?? '0 */6 * * *',
+    rankingCalcCron: process.env.RANKING_CALC_CRON ?? '*/30 * * * *',
+    contestReminderCron: process.env.CONTEST_REMINDER_CRON ?? '* * * * *',
+    postContestCron: process.env.POST_CONTEST_CRON ?? '*/10 * * * *',
   },
 });
