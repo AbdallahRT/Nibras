@@ -20,6 +20,16 @@ async function bootstrap() {
       .setTitle('Nibras API')
       .setDescription('Backend services for the Nibras educational platform.')
       .setVersion('0.1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'Session',
+          description: 'Opaque web session token (web_{uuid})',
+        },
+        'session',
+      )
+      .addCookieAuth('nibras_web_session')
       .build(),
   );
   SwaggerModule.setup(appCfg.swaggerPath, app, swaggerDoc);
