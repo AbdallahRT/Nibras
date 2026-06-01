@@ -1,0 +1,21 @@
+meta {
+  name: LeetCode Connect
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/integrations/leetcode/connect
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "handle": "{{lcHandle}}"
+  }
+}

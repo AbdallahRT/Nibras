@@ -1,0 +1,19 @@
+meta {
+  name: Rating History
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/users/{{userId}}/rating-history
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+params:query {
+  platform: 
+}

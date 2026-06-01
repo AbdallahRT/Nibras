@@ -1,0 +1,11 @@
+meta {
+  name: List Active Contests
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/contests?active=true
+  body: none
+  auth: none
+}

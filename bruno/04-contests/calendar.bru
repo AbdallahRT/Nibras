@@ -1,0 +1,15 @@
+meta {
+  name: Contest Calendar
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/contests/calendar
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

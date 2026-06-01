@@ -1,0 +1,39 @@
+meta {
+  name: Submit Solution
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/contests/{{contestId}}/submissions
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const problemId = bru.getVar("problemId") || bru.getEnvVar("problemId");
+  const contestId = bru.getVar("contestId") || bru.getEnvVar("contestId");
+
+  if (!problemId) {
+    throw new Error(
+      "problemId missing. Run 06-problems/Create Problem first (or set problemId in Environments → local)."
+    );
+  }
+  if (!contestId) {
+    throw new Error(
+      "contestId missing. Run 04-contests/Create Contest first (or set contestId in Environments → local)."
+    );
+  }
+
+  req.setUrl(`${bru.getEnvVar("baseUrl")}/contests/${contestId}/submissions`);
+  req.setBody({
+    problemId,
+    language: "javascript",
+    code: "function solve(input) { const [a,b]=input.trim().split(' ').map(Number); return a+b; }",
+  });
+}

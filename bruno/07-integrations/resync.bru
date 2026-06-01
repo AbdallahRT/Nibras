@@ -1,0 +1,15 @@
+meta {
+  name: Resync Account
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/integrations/accounts/{{host}}/resync
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

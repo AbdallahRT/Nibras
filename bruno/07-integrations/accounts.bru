@@ -1,0 +1,15 @@
+meta {
+  name: List Accounts
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/integrations/accounts
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

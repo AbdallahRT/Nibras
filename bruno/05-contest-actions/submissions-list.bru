@@ -1,0 +1,21 @@
+meta {
+  name: List Submissions
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/contests/{{contestId}}/submissions
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+params:query {
+  problemId: {{problemId}}
+  page: 1
+  limit: 20
+}

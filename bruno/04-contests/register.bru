@@ -1,0 +1,15 @@
+meta {
+  name: Register for Contest
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/contests/{{contestId}}/register
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

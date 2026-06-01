@@ -1,0 +1,21 @@
+meta {
+  name: Bookmark Contest
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/contests/user-contests/{{contestId}}/bookmark
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "on": true
+  }
+}
