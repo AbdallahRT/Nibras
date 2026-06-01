@@ -1,14 +1,16 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import KeyvRedis from '@keyv/redis';
 import type { RedisConfig } from '@config/configuration';
+import { RedisClientService } from './redis-client.service';
 
 const buildRedisUrl = (cfg: RedisConfig): string => {
   const auth = cfg.password ? `:${encodeURIComponent(cfg.password)}@` : '';
   return `redis://${auth}${cfg.host}:${cfg.port}`;
 };
 
+@Global()
 @Module({
   imports: [
     CacheModule.registerAsync({
@@ -24,6 +26,7 @@ const buildRedisUrl = (cfg: RedisConfig): string => {
       },
     }),
   ],
-  exports: [CacheModule],
+  providers: [RedisClientService],
+  exports: [CacheModule, RedisClientService],
 })
 export class RedisModule {}
