@@ -1,0 +1,16 @@
+headers {
+  accept: application/json
+  content-type: application/json
+}
+
+auth {
+  mode: none
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3000/api
+}
+
+docs {
+  Nibras backend API collection. Set `token` in the local environment (npm run dev:session).
+}
