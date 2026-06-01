@@ -1,0 +1,46 @@
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiCookieAuth,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Roles } from '@common/decorators/auth.decorators';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { RolesGuard, SessionAuthGuard } from '@common/guards/auth.guards';
+import type { AuthenticatedUser } from '@modules/auth/types/authenticated-user.type';
+import { UpdateProfileDto, UserProfileResponseDto } from './dto/users.dto';
+import { UsersService } from './users.service';
+
+@ApiTags('users')
+@ApiBearerAuth('session')
+@ApiCookieAuth('nibras_web_session')
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get('me')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'Get authenticated user profile' })
+  getMe(@CurrentUser() user: AuthenticatedUser): UserProfileResponseDto {
+    return this.usersService.toProfileResponse(user);
+  }
+
+  @Patch('me')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'Update authenticated user profile' })
+  updateMe(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<UserProfileResponseDto> {
+    return this.usersService.updateProfile(user.id, dto);
+  }
+
+  @Get(':id')
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles('admin', 'super-admin')
+  @ApiOperation({ summary: 'Admin lookup of a user by id' })
+  getById(@Param('id') id: string): Promise<UserProfileResponseDto> {
+    return this.usersService.findById(id);
+  }
+}
