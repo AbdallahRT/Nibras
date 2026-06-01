@@ -1,36 +1,32 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import {
-  HealthCheckService,
   HealthCheck,
+  HealthCheckService,
   MongooseHealthIndicator,
 } from '@nestjs/terminus';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { RedisHealthIndicator } from './health.service';
 
-@ApiTags('Health')
+@ApiTags('health')
 @Controller('ping')
 export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
-    private readonly db: MongooseHealthIndicator,
-    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+    private readonly mongo: MongooseHealthIndicator,
+    private readonly redis: RedisHealthIndicator,
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Health check endpoint' })
   @HealthCheck()
-  async check() {
+  @ApiOperation({
+    summary: 'Service liveness + dependency health',
+    description:
+      'Returns 200 with status "ok" when MongoDB and Redis are reachable. Returns 503 otherwise.',
+  })
+  check() {
     return this.health.check([
-      () => this.db.pingCheck('mongodb', { timeout: 3000 }),
-      async () => {
-        try {
-          await this.cache.get('health-check');
-          return { redis: { status: 'up' } };
-        } catch {
-          return { redis: { status: 'down' } };
-        }
-      },
+      () => this.mongo.pingCheck('mongo'),
+      () => this.redis.ping('redis'),
     ]);
   }
 }

@@ -1,20 +1,24 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+import type { MongoConfig } from '@config/configuration';
 
 @Module({
   imports: [
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri: config.getOrThrow<string>('MONGODB_URI'),
-        maxPoolSize: 10,
-        minPoolSize: 2,
-        serverSelectionTimeoutMS: 5000,
-        retryAttempts: 3,
-        retryDelay: 1000,
-      }),
+      useFactory: (config: ConfigService) => {
+        const mongo = config.getOrThrow<MongoConfig>('mongo');
+        return {
+          uri: mongo.uri,
+          maxPoolSize: mongo.maxPoolSize,
+          serverSelectionTimeoutMS: mongo.serverSelectionTimeoutMs,
+          retryAttempts: mongo.retryAttempts,
+          retryDelay: mongo.retryDelayMs,
+          autoIndex: config.get<string>('app.nodeEnv') !== 'production',
+        };
+      },
     }),
   ],
 })

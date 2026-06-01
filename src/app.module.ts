@@ -1,34 +1,44 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-redis-yet';
-import { validationSchema } from './config/env.validation';
-import { DatabaseModule } from './database/database.module';
-import { HealthModule } from './modules/health/health.module';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { configuration } from '@config/configuration';
+import { validationSchema } from '@config/validation';
+import { DatabaseModule } from '@database/database.module';
+import { RedisModule } from '@database/redis.module';
+import { AuthModule } from '@modules/auth/auth.module';
+import { HealthModule } from '@modules/health/health.module';
+import { RbacModule } from '@modules/rbac/rbac.module';
+import { UsersModule } from '@modules/users/users.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      load: [configuration],
       validationSchema,
-      isGlobal: true,
-      envFilePath: '.env',
+      validationOptions: {
+        abortEarly: false,
+        allowUnknown: true,
+      },
+      envFilePath: ['.env'],
     }),
-    CacheModule.registerAsync({
-      isGlobal: true,
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (config: ConfigService) => ({
-        store: await redisStore({
-          url: config.getOrThrow<string>('REDIS_URL'),
-        }),
-      }),
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
     }),
     DatabaseModule,
+    RedisModule,
+    RbacModule,
+    AuthModule,
+    UsersModule,
     HealthModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

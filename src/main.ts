@@ -1,25 +1,40 @@
-import { NestFactory } from '@nestjs/core';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import type { AppConfig } from '@config/configuration';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
+  const appCfg = config.getOrThrow<AppConfig>('app');
 
-  const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT', 3000);
-  const prefix = configService.get<string>('API_PREFIX', 'api');
+  app.setGlobalPrefix('api');
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.enableShutdownHooks();
 
-  app.setGlobalPrefix(prefix);
+  const swaggerDoc = SwaggerModule.createDocument(
+    app,
+    new DocumentBuilder()
+      .setTitle('Nibras API')
+      .setDescription('Backend services for the Nibras educational platform.')
+      .setVersion('0.1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'Session',
+          description: 'Opaque web session token (web_{uuid})',
+        },
+        'session',
+      )
+      .addCookieAuth('nibras_web_session')
+      .build(),
+  );
+  SwaggerModule.setup(appCfg.swaggerPath, app, swaggerDoc);
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Nibras API')
-    .setDescription('Nibras backend API')
-    .setVersion('1.0')
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup(`${prefix}/docs`, app, document);
-
-  await app.listen(port);
+  await app.listen(appCfg.port);
 }
+
 void bootstrap();

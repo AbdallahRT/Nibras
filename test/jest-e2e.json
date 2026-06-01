@@ -6,12 +6,12 @@
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "globalSetup": "<rootDir>/test/jest-setup.ts",
+  "setupFilesAfterEnv": ["<rootDir>/jest-e2e-hooks.ts"],
+  "maxWorkers": 1,
   "moduleNameMapper": {
-    "^@modules/(.*)$": "<rootDir>/src/modules/$1",
-    "^@common/(.*)$": "<rootDir>/src/common/$1",
-    "^@config/(.*)$": "<rootDir>/src/config/$1",
-    "^@database/(.*)$": "<rootDir>/src/database/$1",
-    "^(\\.{1,2}/.*)\\.js$": "$1"
+    "^@modules/(.*)$": "<rootDir>/../src/modules/$1",
+    "^@common/(.*)$": "<rootDir>/../src/common/$1",
+    "^@config/(.*)$": "<rootDir>/../src/config/$1",
+    "^@database/(.*)$": "<rootDir>/../src/database/$1"
   }
 }
