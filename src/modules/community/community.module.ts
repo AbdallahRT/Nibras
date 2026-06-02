@@ -14,12 +14,18 @@ import { Question, QuestionSchema } from './schemas/question.schema';
 import { Answer, AnswerSchema } from './schemas/answer.schema';
 import { Tag, TagSchema } from './schemas/tag.schema';
 import { Vote, VoteSchema } from './schemas/vote.schema';
+import { Flag, FlagSchema } from './schemas/flag.schema';
+import {
+  QuestionBookmark,
+  QuestionBookmarkSchema,
+} from './schemas/question-bookmark.schema';
 import { ThreadService } from './services/thread.service';
 import { PostService } from './services/post.service';
 import { QuestionService } from './services/question.service';
 import { AnswerService } from './services/answer.service';
 import { TagService } from './services/tag.service';
 import { VoteService } from './services/vote.service';
+import { FlagService } from './services/flag.service';
 import { ChatbotService } from './services/chatbot.service';
 import { CourseService } from './services/course.service';
 import {
@@ -33,6 +39,7 @@ import { QuestionController } from './controllers/question.controller';
 import { AnswerController } from './controllers/answer.controller';
 import { TagController } from './controllers/tag.controller';
 import { VoteController } from './controllers/vote.controller';
+import { FlagController } from './controllers/flag.controller';
 import { ChatbotController } from './controllers/chatbot.controller';
 import {
   REALTIME_EVENTS,
@@ -55,6 +62,8 @@ import type {
       { name: Answer.name, schema: AnswerSchema },
       { name: Tag.name, schema: TagSchema },
       { name: Vote.name, schema: VoteSchema },
+      { name: Flag.name, schema: FlagSchema },
+      { name: QuestionBookmark.name, schema: QuestionBookmarkSchema },
     ]),
     HttpModule,
   ],
@@ -65,6 +74,7 @@ import type {
     AnswerController,
     TagController,
     VoteController,
+    FlagController,
     ChatbotController,
   ],
   providers: [
@@ -74,6 +84,7 @@ import type {
     AnswerService,
     TagService,
     VoteService,
+    FlagService,
     ChatbotService,
     CourseService,
     CommunityGateway,

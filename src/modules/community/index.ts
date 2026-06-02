@@ -9,3 +9,4 @@ export type {
   IActivityEventService,
   INotificationService,
 } from './interfaces/external-services.interface';
+export { FlagService } from './services/flag.service';

@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsArray,
   IsMongoId,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateQuestionDto {
@@ -23,6 +24,10 @@ export class CreateQuestionDto {
   @IsOptional()
   @IsMongoId()
   course?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isAnonymous?: boolean;
 }
 
 export class UpdateQuestionDto {

@@ -32,6 +32,17 @@ export class TagController {
     };
   }
 
+  @Get('autocomplete')
+  @ApiOperation({ summary: 'Auto-suggest tags by query' })
+  async autocomplete(@Query('q') q: string, @Query('limit') limit?: string) {
+    const tags = await this.tagService.searchTags(q || '', Number(limit) || 10);
+    return {
+      success: true,
+      message: 'Tags fetched successfully',
+      data: { tags },
+    };
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get all tags' })
   async getAllTags(@Query() query: PaginationQueryDto) {

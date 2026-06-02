@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/questions
+  url: {{baseUrl}}/questions?page=1&limit=20&sort=createdAt:desc&status=open
   body: none
   auth: bearer
 }

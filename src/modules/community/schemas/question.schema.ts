@@ -26,6 +26,18 @@ export class Question {
 
   @Prop({ default: 0 })
   answersCount!: number;
+
+  @Prop({ default: false })
+  isAnonymous!: boolean;
+
+  @Prop({ default: 0 })
+  viewCount!: number;
+
+  @Prop({ default: false })
+  isDeleted!: boolean;
+
+  @Prop()
+  deletedAt?: Date;
 }
 
 export const QuestionSchema = SchemaFactory.createForClass(Question);

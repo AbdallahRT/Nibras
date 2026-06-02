@@ -10,6 +10,12 @@ export class Tag {
 
   @Prop({ default: 0 })
   usageCount!: number;
+
+  @Prop({ enum: ['course', 'topic', 'subtopic'], default: 'topic' })
+  category!: string;
+
+  @Prop({ type: [String], default: [] })
+  synonyms!: string[];
 }
 
 export const TagSchema = SchemaFactory.createForClass(Tag);

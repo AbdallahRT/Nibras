@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  MaxLength,
+  IsIn,
+  IsArray,
+} from 'class-validator';
 
 export class CreateTagDto {
   @IsString()
@@ -10,6 +17,16 @@ export class CreateTagDto {
   @IsString()
   @MaxLength(200)
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['course', 'topic', 'subtopic'])
+  category?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  synonyms?: string[];
 }
 
 export class UpdateTagDto {
@@ -23,4 +40,14 @@ export class UpdateTagDto {
   @IsString()
   @MaxLength(200)
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['course', 'topic', 'subtopic'])
+  category?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  synonyms?: string[];
 }

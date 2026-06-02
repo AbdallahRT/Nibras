@@ -156,11 +156,15 @@ export class AnswerController {
   }
 
   @Patch(':id/accept')
-  @ApiOperation({ summary: 'Accept answer' })
+  @ApiOperation({ summary: 'Accept answer (question author or moderator)' })
   async accept(@Param('id') id: string, @Req() req: RequestWithUser) {
     if (!isValidObjectId(id))
       throw new BadRequestException('Invalid answer ID');
-    const answer = await this.answerService.accept(id, req.user.id);
+    const answer = await this.answerService.accept(
+      id,
+      req.user.id,
+      req.user.role,
+    );
     return {
       success: true,
       message: 'Answer accepted successfully',

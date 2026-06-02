@@ -1,11 +1,11 @@
 meta {
-  name: Search Questions
+  name: Tag Autocomplete
   type: http
-  seq: 3
+  seq: 4
 }
 
 get {
-  url: {{baseUrl}}/questions/search?q=BFS&page=1&limit=20
+  url: {{baseUrl}}/tags/autocomplete?q=graph&limit=10
   body: none
   auth: bearer
 }

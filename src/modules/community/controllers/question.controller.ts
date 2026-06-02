@@ -20,6 +20,7 @@ import { AnswerService } from '../services/answer.service';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@modules/auth/types/authenticated-user.type';
 import { CreateQuestionDto, UpdateQuestionDto } from '../dto/question.dto';
+import { ToggleBookmarkDto } from '../dto/bookmark.dto';
 import { PaginationQueryDto } from '../dto/pagination-query.dto';
 
 @ApiTags('Questions')
@@ -30,6 +31,11 @@ export class QuestionController {
     private questionService: QuestionService,
     private answerService: AnswerService,
   ) {}
+
+  private isModerator(user: AuthenticatedUser): boolean {
+    const role = user.role.toLowerCase();
+    return role === 'admin' || role === 'super admin' || role === 'instructor';
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a question' })
@@ -48,8 +54,61 @@ export class QuestionController {
     };
   }
 
+  @Get('search')
+  @ApiOperation({ summary: 'Full-text search questions' })
+  async search(@Query('q') q: string, @Query() pagination: PaginationQueryDto) {
+    if (!q?.trim()) throw new BadRequestException('Search query is required');
+    const result = await this.questionService.findAll({
+      search: q,
+      page: pagination.page,
+      limit: pagination.limit,
+    });
+    return {
+      success: true,
+      message: 'Search results fetched successfully',
+      data: result,
+    };
+  }
+
+  @Get('bookmarks')
+  @ApiOperation({ summary: 'Get my bookmarked questions' })
+  async getBookmarks(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() pagination: PaginationQueryDto,
+  ) {
+    const result = await this.questionService.getBookmarkedQuestions(
+      user.id,
+      pagination.page,
+      pagination.limit,
+    );
+    return {
+      success: true,
+      message: 'Bookmarked questions fetched successfully',
+      data: result,
+    };
+  }
+
+  @Post(':id/bookmark')
+  @ApiOperation({ summary: 'Toggle bookmark on a question' })
+  async toggleBookmark(
+    @Param('id') id: string,
+    @Body() dto: ToggleBookmarkDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (!isValidObjectId(id))
+      throw new BadRequestException('Invalid question ID');
+    const result = await this.questionService.setBookmark(user.id, id, dto.on);
+    return {
+      success: true,
+      message: result.bookmarked
+        ? 'Question bookmarked successfully'
+        : 'Bookmark removed successfully',
+      data: result,
+    };
+  }
+
   @Get()
-  @ApiOperation({ summary: 'List questions' })
+  @ApiOperation({ summary: 'List questions with filters' })
   async findAll(
     @Query()
     query: PaginationQueryDto & {
@@ -57,6 +116,8 @@ export class QuestionController {
       title?: string;
       tag?: string;
       course?: string;
+      status?: string;
+      sort?: string;
     },
   ) {
     const result = await this.questionService.findAll(query);
@@ -72,7 +133,7 @@ export class QuestionController {
   async findById(@Param('id') id: string) {
     if (!isValidObjectId(id))
       throw new BadRequestException('Invalid question ID');
-    const question = await this.questionService.findById(id);
+    const question = await this.questionService.findByIdCached(id);
     if (!question) throw new NotFoundException('Question not found');
     const { answers, pagination: answerPagination } =
       await this.answerService.findByQuestion(id);
@@ -84,7 +145,7 @@ export class QuestionController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update question' })
+  @ApiOperation({ summary: 'Update question (author or moderator)' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateQuestionDto,
@@ -96,7 +157,7 @@ export class QuestionController {
     if (!question) throw new NotFoundException('Question not found');
     const authorId = question.author._id;
 
-    if (String(authorId) !== String(user.id)) {
+    if (String(authorId) !== String(user.id) && !this.isModerator(user)) {
       throw new ForbiddenException(
         'You are not allowed to update this question',
       );
@@ -110,7 +171,7 @@ export class QuestionController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete question' })
+  @ApiOperation({ summary: 'Soft-delete question (author or moderator)' })
   async delete(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -120,12 +181,12 @@ export class QuestionController {
     const question = await this.questionService.findById(id);
     if (!question) throw new NotFoundException('Question not found');
     const authorId = question.author._id;
-    if (String(authorId) !== String(user.id)) {
+    if (String(authorId) !== String(user.id) && !this.isModerator(user)) {
       throw new ForbiddenException(
         'You are not allowed to delete this question',
       );
     }
-    await this.questionService.delete(id);
+    await this.questionService.softDelete(id);
     return { success: true, message: 'Question deleted successfully' };
   }
 }

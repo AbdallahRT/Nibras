@@ -17,6 +17,8 @@ export interface PopulatedTag {
   name: string;
   description?: string;
   usageCount?: number;
+  category?: string;
+  synonyms?: string[];
 }
 
 export interface PopulatedQuestion {
@@ -29,6 +31,10 @@ export interface PopulatedQuestion {
   status: string;
   votesCount: number;
   answersCount: number;
+  isAnonymous: boolean;
+  viewCount: number;
+  isDeleted: boolean;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

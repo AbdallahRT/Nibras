@@ -1,11 +1,11 @@
 meta {
-  name: Search Questions
+  name: List Bookmarks
   type: http
-  seq: 3
+  seq: 8
 }
 
 get {
-  url: {{baseUrl}}/questions/search?q=BFS&page=1&limit=20
+  url: {{baseUrl}}/questions/bookmarks?page=1&limit=20
   body: none
   auth: bearer
 }

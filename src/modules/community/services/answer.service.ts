@@ -160,16 +160,21 @@ export class AnswerService {
     };
   }
 
-  async accept(answerId: string, questionAuthorId: string) {
+  async accept(answerId: string, userId: string, userRole?: string) {
     const answer = await this.answerModel.findById(answerId);
     if (!answer) throw new NotFoundException('Answer not found');
 
     const question = await this.questionModel.findById(answer.question);
     if (!question) throw new NotFoundException('Question not found');
 
-    if (String(question.author) !== String(questionAuthorId)) {
+    const isQuestionAuthor = String(question.author) === String(userId);
+    const isModerator =
+      userRole &&
+      ['admin', 'super admin', 'instructor'].includes(userRole.toLowerCase());
+
+    if (!isQuestionAuthor && !isModerator) {
       throw new ForbiddenException(
-        'Only the question author can accept an answer',
+        'Only the question author or a moderator can accept an answer',
       );
     }
 

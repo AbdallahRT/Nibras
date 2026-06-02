@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Body,
   Req,
   BadRequestException,
   UseGuards,
@@ -14,6 +15,7 @@ import { isValidObjectId } from 'mongoose';
 import { SessionAuthGuard } from '@common/guards/auth.guards';
 import type { AuthenticatedUser } from '@modules/auth/types/authenticated-user.type';
 import { VoteService } from '../services/vote.service';
+import { CastVoteDto } from '../dto/vote.dto';
 
 type RequestWithUser = Request & { user: AuthenticatedUser };
 
@@ -22,6 +24,25 @@ type RequestWithUser = Request & { user: AuthenticatedUser };
 @Controller('votes')
 export class VoteController {
   constructor(private voteService: VoteService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Cast a vote (upvote/downvote)' })
+  async castVote(@Body() dto: CastVoteDto, @Req() req: RequestWithUser) {
+    if (dto.value !== 1 && dto.value !== -1) {
+      throw new BadRequestException('Vote value must be 1 or -1');
+    }
+    const result = await this.voteService.castVote({
+      targetType: dto.targetType,
+      targetId: dto.targetId,
+      userId: req.user.id,
+      value: dto.value,
+    });
+    return {
+      success: true,
+      message: 'Vote registered successfully',
+      data: result,
+    };
+  }
 
   @Post(':targetType/:targetId/upvote')
   @ApiOperation({ summary: 'Upvote a target' })
