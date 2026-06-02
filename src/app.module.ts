@@ -7,6 +7,7 @@ import { validationSchema } from '@config/validation';
 import { DatabaseModule } from '@database/database.module';
 import { RedisModule } from '@database/redis.module';
 import { AuthModule } from '@modules/auth/auth.module';
+import { CommunityModule } from '@modules/community/community.module';
 import { HealthModule } from '@modules/health/health.module';
 import { RbacModule } from '@modules/rbac/rbac.module';
 import { UsersModule } from '@modules/users/users.module';
@@ -34,6 +35,7 @@ import { CompetitionsModule } from '@modules/competitions/competitions.module';
     AuthModule,
     UsersModule,
     CompetitionsModule,
+    CommunityModule,
     HealthModule,
   ],
   providers: [

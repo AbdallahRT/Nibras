@@ -1,0 +1,11 @@
+meta {
+  name: Search Questions
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/questions?search=BFS&tag=graph
+  body: none
+  auth: bearer
+}
