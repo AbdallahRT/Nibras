@@ -1,0 +1,14 @@
+meta {
+  name: Run Plagiarism Check
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/plagiarism-check
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Approve Enrollment Request
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/courses/{{courseId}}/enrollment-requests/{{requestId}}/approve
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {}
+}

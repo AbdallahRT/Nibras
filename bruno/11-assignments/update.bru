@@ -1,0 +1,25 @@
+meta {
+  name: Update Assignment
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/courses/{{courseId}}/assignments/{{assignmentId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "title": "Hello World - Updated",
+    "description": "Updated description",
+    "pointsPossible": 100,
+    "published": true,
+    "dueAt": "2026-12-31T23:59:59Z"
+  }
+}

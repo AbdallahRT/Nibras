@@ -1,0 +1,23 @@
+meta {
+  name: Update Test Case
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{baseUrl}}/test-cases/{{testCaseId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "input": "5 7",
+    "expectedOutput": "12",
+    "weight": 2
+  }
+}

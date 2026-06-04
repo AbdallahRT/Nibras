@@ -1,0 +1,22 @@
+meta {
+  name: Batch Feedback
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/submissions/{{submissionId}}/feedback
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "submissionIds": ["{{submissionId}}"],
+    "message": "Great effort on this assignment! Review the test case outputs for edge cases."
+  }
+}

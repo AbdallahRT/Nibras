@@ -12,6 +12,8 @@ import { HealthModule } from '@modules/health/health.module';
 import { RbacModule } from '@modules/rbac/rbac.module';
 import { UsersModule } from '@modules/users/users.module';
 import { CompetitionsModule } from '@modules/competitions/competitions.module';
+import { CoursesModule } from '@modules/courses/courses.module';
+import { AssessmentsModule } from '@modules/assessments/assessments.module';
 import { GamificationModule } from '@modules/gamification/gamification.module';
 
 @Module({
@@ -36,8 +38,10 @@ import { GamificationModule } from '@modules/gamification/gamification.module';
     AuthModule,
     UsersModule,
     GamificationModule,
-    CompetitionsModule,
     CommunityModule,
+    CompetitionsModule,
+    CoursesModule,
+    AssessmentsModule,
     HealthModule,
   ],
   providers: [

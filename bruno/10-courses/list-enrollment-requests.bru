@@ -1,0 +1,14 @@
+meta {
+  name: List Enrollment Requests
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/courses/{{courseId}}/enrollment-requests
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

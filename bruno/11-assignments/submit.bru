@@ -1,0 +1,22 @@
+meta {
+  name: Submit Assignment
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/submit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "language": "javascript",
+    "code": "function solve(input) { const [a,b] = input.trim().split(' ').map(Number); return a+b; }"
+  }
+}

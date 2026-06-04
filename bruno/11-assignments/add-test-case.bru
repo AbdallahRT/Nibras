@@ -1,0 +1,24 @@
+meta {
+  name: Add Test Case
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/test-cases
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "input": "1 2",
+    "expectedOutput": "3",
+    "isHidden": false,
+    "weight": 1
+  }
+}
