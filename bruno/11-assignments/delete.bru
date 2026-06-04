@@ -1,0 +1,14 @@
+meta {
+  name: Delete Assignment
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/courses/{{courseId}}/assignments/{{assignmentId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

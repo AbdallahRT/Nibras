@@ -1,0 +1,23 @@
+meta {
+  name: Submit Peer Review
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/submissions/peer-review
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "submissionId": "{{submissionId}}",
+    "feedback": "Your solution is clean and handles edge cases well.",
+    "score": 85
+  }
+}

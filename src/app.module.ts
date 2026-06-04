@@ -14,6 +14,7 @@ import { UsersModule } from '@modules/users/users.module';
 import { CompetitionsModule } from '@modules/competitions/competitions.module';
 import { CoursesModule } from '@modules/courses/courses.module';
 import { AssessmentsModule } from '@modules/assessments/assessments.module';
+import { GamificationModule } from '@modules/gamification/gamification.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AssessmentsModule } from '@modules/assessments/assessments.module';
     AuthModule,
     UsersModule,
     GamificationModule,
+    CommunityModule,
     CompetitionsModule,
     CoursesModule,
     AssessmentsModule,

@@ -1,0 +1,14 @@
+meta {
+  name: Get Plagiarism Report
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/plagiarism-report
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

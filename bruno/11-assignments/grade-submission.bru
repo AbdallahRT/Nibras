@@ -1,0 +1,34 @@
+meta {
+  name: Grade Submission
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/submissions/{{submissionId}}/grade
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "score": 85,
+    "textFeedback": "Good work! Could improve variable naming.",
+    "rubricScores": [
+      {
+        "criterionName": "Correctness",
+        "levelLabel": "Excellent",
+        "points": 40
+      },
+      {
+        "criterionName": "Code Quality",
+        "levelLabel": "Good",
+        "points": 25
+      }
+    ]
+  }
+}

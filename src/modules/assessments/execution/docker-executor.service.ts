@@ -70,12 +70,12 @@ export class DockerExecutorService {
     memoryLimitMb?: number;
   }): Promise<ExecutionResult> {
     if (!this.isEnabled()) {
-      return this.runInProcessFallback(input);
+      return Promise.resolve(this.runInProcessFallback(input));
     }
 
     if (!this.dockerAvailable()) {
       this.logger.warn('Docker unavailable; using in-process fallback');
-      return this.runInProcessFallback(input);
+      return Promise.resolve(this.runInProcessFallback(input));
     }
 
     if (this.activeRuns >= this.maxConcurrent()) {
@@ -87,7 +87,7 @@ export class DockerExecutorService {
 
     this.activeRuns += 1;
     try {
-      return this.runDocker(input);
+      return Promise.resolve(this.runDocker(input));
     } finally {
       this.activeRuns -= 1;
     }

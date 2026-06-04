@@ -284,6 +284,82 @@ export class CoursesService {
     };
   }
 
+  async listPendingEnrollments(user: AuthenticatedUser) {
+    const requests = await this.enrollmentModel
+      .find({
+        userId: new Types.ObjectId(user.id),
+        status: EnrollmentRequestStatus.Pending,
+      })
+      .populate('courseId', 'slug title termLabel courseCode isPublic')
+      .lean()
+      .exec();
+
+    return requests.map((r) => {
+      const course = r.courseId as unknown as {
+        _id: Types.ObjectId;
+        slug: string;
+        title: string;
+        termLabel: string;
+        courseCode: string;
+        isPublic: boolean;
+      };
+      return {
+        requestId: r._id.toString(),
+        courseId: course._id.toString(),
+        slug: course.slug,
+        title: course.title,
+        termLabel: course.termLabel,
+        courseCode: course.courseCode,
+        message: r.message ?? null,
+        requestedAt: (r as unknown as { createdAt: string }).createdAt,
+      };
+    });
+  }
+
+  async listEnrollmentRequests(
+    manager: AuthenticatedUser,
+    courseId: string,
+    status?: EnrollmentRequestStatus,
+  ) {
+    if (!(await this.access.canManageCourseForRequest(manager, courseId))) {
+      throw new ForbiddenException({
+        code: 'FORBIDDEN',
+        message: 'Course management access required',
+      });
+    }
+
+    const filter: Record<string, unknown> = {
+      courseId: new Types.ObjectId(courseId),
+    };
+    if (status) filter.status = status;
+
+    const requests = await this.enrollmentModel
+      .find(filter)
+      .populate('userId', 'username email')
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    return requests.map((r) => {
+      const user = r.userId as unknown as {
+        _id: Types.ObjectId;
+        username?: string;
+        email?: string;
+      };
+      return {
+        id: r._id.toString(),
+        userId: user._id.toString(),
+        username: user.username ?? null,
+        email: user.email ?? null,
+        status: r.status,
+        message: r.message ?? null,
+        requestedAt: (r as unknown as { createdAt: string }).createdAt,
+        reviewedBy: r.reviewedBy?.toString() ?? null,
+        reviewedAt: r.reviewedAt?.toISOString() ?? null,
+      };
+    });
+  }
+
   async approveEnrollment(
     manager: AuthenticatedUser,
     courseId: string,

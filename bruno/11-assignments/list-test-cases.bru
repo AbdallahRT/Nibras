@@ -1,0 +1,14 @@
+meta {
+  name: List Test Cases
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/test-cases
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
