@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/practice/codeforces/problems
+  url: {{baseUrl}}/practice/codeforces/problems?handle={{cfHandle}}&page=3&limit=20
   body: none
   auth: none
 }
 
 params:query {
   handle: {{cfHandle}}
-  page: 1
+  page: 3
   limit: 20
 }
