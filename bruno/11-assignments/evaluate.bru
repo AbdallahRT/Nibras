@@ -1,0 +1,14 @@
+meta {
+  name: Evaluate Assignment
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/evaluate
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

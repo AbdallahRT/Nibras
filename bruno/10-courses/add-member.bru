@@ -1,0 +1,22 @@
+meta {
+  name: Add Course Member
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/courses/{{courseId}}/members
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "userId": "{{studentUserId}}",
+    "role": "student"
+  }
+}
