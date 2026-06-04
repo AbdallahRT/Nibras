@@ -1,0 +1,14 @@
+meta {
+  name: List Course Members
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/courses/{{courseId}}/members
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

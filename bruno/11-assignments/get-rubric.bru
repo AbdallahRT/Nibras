@@ -1,0 +1,14 @@
+meta {
+  name: Get Rubric
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/rubric
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

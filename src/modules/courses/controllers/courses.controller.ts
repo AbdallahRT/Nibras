@@ -1,8 +1,17 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCookieAuth,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { Roles } from '@common/decorators/auth.decorators';
@@ -15,6 +24,7 @@ import {
   EnrollCourseDto,
 } from '../dto/courses.dto';
 import { CoursesService } from '../services/courses.service';
+import { EnrollmentRequestStatus } from '../enums/course.enums';
 
 @ApiTags('courses')
 @ApiBearerAuth('session')
@@ -34,6 +44,25 @@ export class CoursesController {
   @ApiOperation({ summary: 'Browse public courses' })
   browse(@CurrentUser() user: AuthenticatedUser) {
     return this.coursesService.browsePublicCourses(user);
+  }
+
+  @Get('pending')
+  @ApiOperation({ summary: 'List courses with pending enrollment requests' })
+  listPending(@CurrentUser() user: AuthenticatedUser) {
+    return this.coursesService.listPendingEnrollments(user);
+  }
+
+  @Get(':courseId/enrollment-requests')
+  @ApiOperation({
+    summary: 'List enrollment requests for a course (instructor)',
+  })
+  @ApiQuery({ name: 'status', required: false, enum: EnrollmentRequestStatus })
+  listEnrollmentRequests(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('courseId') courseId: string,
+    @Query('status') status?: EnrollmentRequestStatus,
+  ) {
+    return this.coursesService.listEnrollmentRequests(user, courseId, status);
   }
 
   @Post()

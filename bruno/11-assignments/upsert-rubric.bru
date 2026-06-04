@@ -1,0 +1,52 @@
+meta {
+  name: Upsert Rubric
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/rubric
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "criteria": [
+      {
+        "name": "Correctness",
+        "description": "Does the solution produce correct output?",
+        "maxPoints": 50,
+        "levels": [
+          { "label": "Excellent", "description": "All test cases pass", "points": 50 },
+          { "label": "Good", "description": "Most test cases pass", "points": 35 },
+          { "label": "Needs Improvement", "description": "Few test cases pass", "points": 15 }
+        ]
+      },
+      {
+        "name": "Code Quality",
+        "description": "Is the code well-structured and readable?",
+        "maxPoints": 30,
+        "levels": [
+          { "label": "Excellent", "description": "Clean, well-organized code", "points": 30 },
+          { "label": "Good", "description": "Adequate structure", "points": 20 },
+          { "label": "Needs Improvement", "description": "Poor structure", "points": 10 }
+        ]
+      },
+      {
+        "name": "Documentation",
+        "description": "Is the code properly documented?",
+        "maxPoints": 20,
+        "levels": [
+          { "label": "Excellent", "description": "Clear comments and docs", "points": 20 },
+          { "label": "Good", "description": "Some documentation", "points": 12 },
+          { "label": "Missing", "description": "No documentation", "points": 0 }
+        ]
+      }
+    ]
+  }
+}

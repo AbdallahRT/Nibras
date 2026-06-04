@@ -1,0 +1,14 @@
+meta {
+  name: Get Style Report
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/submissions/{{submissionId}}/style-report
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

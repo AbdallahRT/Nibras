@@ -1,0 +1,14 @@
+meta {
+  name: Get Assignment Detail
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/assignments/{{assignmentId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

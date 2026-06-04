@@ -1,0 +1,34 @@
+meta {
+  name: Import Test Cases
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/assignments/{{assignmentId}}/test-cases/import
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "cases": [
+      {
+        "input": "1 2",
+        "expectedOutput": "3",
+        "isHidden": false,
+        "weight": 1
+      },
+      {
+        "input": "10 20",
+        "expectedOutput": "30",
+        "isHidden": true,
+        "weight": 2
+      }
+    ]
+  }
+}
