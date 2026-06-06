@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { configuration } from '@config/configuration';
 import { validationSchema } from '@config/validation';
@@ -13,6 +14,7 @@ import { RbacModule } from '@modules/rbac/rbac.module';
 import { UsersModule } from '@modules/users/users.module';
 import { CompetitionsModule } from '@modules/competitions/competitions.module';
 import { CoursesModule } from '@modules/courses/courses.module';
+import { CourseContentModule } from '@modules/course-content/course-content.module';
 import { AssessmentsModule } from '@modules/assessments/assessments.module';
 import { GamificationModule } from '@modules/gamification/gamification.module';
 
@@ -32,6 +34,7 @@ import { GamificationModule } from '@modules/gamification/gamification.module';
     ThrottlerModule.forRoot({
       throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
     }),
+    EventEmitterModule.forRoot({ wildcard: false, delimiter: '.' }),
     DatabaseModule,
     RedisModule,
     RbacModule,
@@ -41,6 +44,7 @@ import { GamificationModule } from '@modules/gamification/gamification.module';
     CommunityModule,
     CompetitionsModule,
     CoursesModule,
+    CourseContentModule,
     AssessmentsModule,
     HealthModule,
   ],
