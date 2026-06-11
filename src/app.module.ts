@@ -17,6 +17,7 @@ import { CoursesModule } from '@modules/courses/courses.module';
 import { CourseContentModule } from '@modules/course-content/course-content.module';
 import { AssessmentsModule } from '@modules/assessments/assessments.module';
 import { GamificationModule } from '@modules/gamification/gamification.module';
+import { TestingModule } from '@modules/testing/testing.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { GamificationModule } from '@modules/gamification/gamification.module';
     CoursesModule,
     CourseContentModule,
     AssessmentsModule,
+    TestingModule,
     HealthModule,
   ],
   providers: [
