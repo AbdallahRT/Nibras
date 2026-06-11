@@ -62,7 +62,43 @@ export class VideosService {
     const embedUrl = normalizeYouTubeEmbedUrl(dto.embedUrl);
 
     if (dto.requiresVideoId) {
+      if (!Types.ObjectId.isValid(dto.requiresVideoId)) {
+        throw new BadRequestException({
+          code: 'INVALID_REQUIRES_VIDEO_ID',
+          message: 'requiresVideoId must be a valid video id',
+        });
+      }
+
+      const prereqVideo = await this.videoModel
+        .findOne({ _id: dto.requiresVideoId, isDeleted: false })
+        .select('sectionId')
+        .exec();
+      if (!prereqVideo) {
+        throw new NotFoundException({
+          code: 'NOT_FOUND',
+          message: 'Prerequisite video not found',
+        });
+      }
+
+      const prereqSection = await this.sectionModel
+        .findById(prereqVideo.sectionId)
+        .select('courseId')
+        .exec();
+      if (!prereqSection || prereqSection.courseId.toString() !== courseId) {
+        throw new BadRequestException({
+          code: 'INVALID_REQUIRES_VIDEO_ID',
+          message: 'Prerequisite video must belong to the same course',
+        });
+      }
+
       await this.requireNoCircularDependency(dto.requiresVideoId, null);
+    }
+
+    if (dto.linkedProjectId && !Types.ObjectId.isValid(dto.linkedProjectId)) {
+      throw new BadRequestException({
+        code: 'INVALID_LINKED_PROJECT_ID',
+        message: 'linkedProjectId must be a valid ObjectId',
+      });
     }
 
     let sortOrder = dto.sortOrder;
