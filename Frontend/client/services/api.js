@@ -828,7 +828,7 @@
      */
     async getMe() {
       return apiFetch('/auth/me', {
-        service: 'community',
+        service: 'admin',
         method: 'GET',
         auth: true,
       });
@@ -852,7 +852,7 @@
         }
       });
       const query = params.toString();
-      return apiFetch(`/community/questions${query ? '?' + query : ''}`, {
+      return apiFetch(`/v1/community/questions${query ? '?' + query : ''}`, {
         service: 'legacyCommunity',
         method: 'GET',
         auth: false,
@@ -865,7 +865,7 @@
      * @returns {Promise<{question: object, answers: Array}>}
      */
     async getById(id) {
-      return apiFetch(`/community/questions/${id}`, {
+      return apiFetch(`/v1/community/questions/${id}`, {
         service: 'legacyCommunity',
         method: 'GET',
         auth: false,
@@ -878,7 +878,7 @@
      * @returns {Promise<object>}
      */
     async create(data) {
-      return apiFetch('/community/questions', {
+      return apiFetch('/v1/community/questions', {
         service: 'legacyCommunity',
         method: 'POST',
         auth: true,
@@ -893,7 +893,7 @@
      * @returns {Promise<object>}
      */
     async update(id, data) {
-      return apiFetch(`/community/questions/${id}`, {
+      return apiFetch(`/v1/community/questions/${id}`, {
         service: 'legacyCommunity',
         method: 'PATCH',
         auth: true,
@@ -907,7 +907,7 @@
      * @returns {Promise<object>}
      */
     async delete(id) {
-      return apiFetch(`/community/questions/${id}`, {
+      return apiFetch(`/v1/community/questions/${id}`, {
         service: 'legacyCommunity',
         method: 'DELETE',
         auth: true,
@@ -946,7 +946,7 @@
      * @returns {Promise<Array>}
      */
     async listByQuestion(questionId) {
-      return apiFetch(`/community/answers/question/${questionId}`, {
+      return apiFetch(`/v1/community/answers/question/${questionId}`, {
         service: 'legacyCommunity',
         method: 'GET',
         auth: false,
@@ -960,11 +960,26 @@
      * @returns {Promise<object>}
      */
     async getById(questionId, answerId) {
-      return apiFetch(`/community/answers/${questionId}/${answerId}`, {
-        service: 'legacyCommunity',
-        method: 'GET',
-        auth: false,
-      });
+      const payload = await apiFetch(
+        `/v1/community/answers/question/${questionId}`,
+        {
+          service: 'legacyCommunity',
+          method: 'GET',
+          auth: false,
+        },
+      );
+      const answers =
+        payload?.answers ||
+        unwrapApiData(payload)?.answers ||
+        unwrapApiData(payload) ||
+        [];
+      const match = Array.isArray(answers)
+        ? answers.find(
+            (entry) =>
+              String(entry?.id || entry?._id || '') === String(answerId || ''),
+          )
+        : null;
+      return match ? { answer: match } : payload;
     },
 
     /**
@@ -974,7 +989,7 @@
      * @returns {Promise<object>}
      */
     async create(questionId, data) {
-      return apiFetch(`/community/answers/${questionId}`, {
+      return apiFetch(`/v1/community/answers/${questionId}`, {
         service: 'legacyCommunity',
         method: 'POST',
         auth: true,
@@ -990,7 +1005,7 @@
      * @returns {Promise<object>}
      */
     async update(questionId, answerId, data) {
-      return apiFetch(`/community/answers/${questionId}/${answerId}`, {
+      return apiFetch(`/v1/community/answers/${answerId}`, {
         service: 'legacyCommunity',
         method: 'PATCH',
         auth: true,
@@ -1005,7 +1020,7 @@
      * @returns {Promise<object>}
      */
     async delete(questionId, answerId) {
-      return apiFetch(`/community/answers/${questionId}/${answerId}`, {
+      return apiFetch(`/v1/community/answers/${answerId}`, {
         service: 'legacyCommunity',
         method: 'DELETE',
         auth: true,
@@ -1019,7 +1034,7 @@
      */
     async accept(questionId, answerId) {
       return apiFetch(
-        `/community/answers/${encodeURIComponent(String(questionId))}/${encodeURIComponent(String(answerId))}/accept`,
+        `/v1/community/answers/${encodeURIComponent(String(answerId))}/accept`,
         {
           service: 'legacyCommunity',
           method: 'PATCH',
@@ -1039,7 +1054,7 @@
      * @returns {Promise<{message: string, action: string, voteValue: number, votesCount: number}>}
      */
     async cast(data) {
-      return apiFetch('/community/votes', {
+      return apiFetch('/v1/community/votes', {
         service: 'legacyCommunity',
         method: 'POST',
         auth: true,
@@ -1055,7 +1070,7 @@
     async getMyVote(params) {
       const targetType =
         params.targetType === 'question' ? 'question' : 'answer';
-      return apiFetch(`/community/votes/${targetType}/${params.targetId}`, {
+      return apiFetch(`/v1/community/votes/${targetType}/${params.targetId}`, {
         service: 'legacyCommunity',
         method: 'GET',
         auth: true,
@@ -1073,7 +1088,7 @@
      * @returns {Promise<{message: string, action: string, voteValue: number, votesCount: number}>}
      */
     async cast(data) {
-      return apiFetch('/community/votes', {
+      return apiFetch('/v1/community/votes', {
         service: 'community',
         method: 'POST',
         auth: true,
@@ -1088,7 +1103,7 @@
      */
     async getMyVote(params) {
       const targetType = params.targetType === 'thread' ? 'thread' : 'post';
-      return apiFetch(`/community/votes/${targetType}/${params.targetId}`, {
+      return apiFetch(`/v1/community/votes/${targetType}/${params.targetId}`, {
         service: 'community',
         method: 'GET',
         auth: true,
@@ -1105,7 +1120,7 @@
      * @returns {Promise<Array>}
      */
     async list() {
-      return apiFetch('/community/tags', {
+      return apiFetch('/v1/community/tags', {
         service: 'legacyCommunity',
         method: 'GET',
         auth: false,
@@ -1118,7 +1133,7 @@
      * @returns {Promise<Array>}
      */
     async popular(limit = 5) {
-      return apiFetch(`/community/tags/popular?limit=${limit}`, {
+      return apiFetch(`/v1/community/tags/popular?limit=${limit}`, {
         service: 'legacyCommunity',
         method: 'GET',
         auth: false,
@@ -1131,7 +1146,7 @@
      * @returns {Promise<object>}
      */
     async getById(id) {
-      return apiFetch(`/community/tags/${id}`, {
+      return apiFetch(`/v1/community/tags/${id}`, {
         service: 'legacyCommunity',
         method: 'GET',
         auth: false,
@@ -1159,13 +1174,13 @@
   // ============================================================
   const flagService = {
     /**
-     * Flag content as inappropriate
-     * @param {object} data - { targetId, targetType: 'question'|'answer', reason: string }
+     * Report content as inappropriate
+     * @param {object} data - { targetId, targetType: 'question'|'answer'|'thread'|'post', reason: string }
      * @returns {Promise<object>}
      */
     async create(data) {
-      return apiFetch('/flags', {
-        service: 'admin',
+      return apiFetch('/v1/community/reports', {
+        service: 'legacyCommunity',
         method: 'POST',
         auth: true,
         body: data,
@@ -1185,25 +1200,32 @@
         }
       });
       const query = params.toString();
-      return apiFetch(`/moderation/queue${query ? '?' + query : ''}`, {
-        service: 'admin',
+      return apiFetch(`/v1/community/reports${query ? '?' + query : ''}`, {
+        service: 'legacyCommunity',
         method: 'GET',
         auth: true,
       });
     },
 
     /**
-     * Resolve a flag (admin only)
-     * @param {string} flagId - Flag MongoDB ObjectId
-     * @param {object} data - { action: 'dismiss'|'remove'|'ban', note?: string }
+     * Resolve a report (admin only)
+     * @param {string} reportId - Report id
+     * @param {object} data - { action: 'dismiss'|'hide'|'remove', note?: string }
      * @returns {Promise<object>}
      */
-    async resolve(flagId, data) {
-      return apiFetch(`/moderation/flags/${flagId}/resolve`, {
-        service: 'admin',
+    async resolve(reportId, data) {
+      const actionMap = {
+        dismiss: 'dismiss',
+        remove: 'remove',
+        ban: 'remove',
+        hide: 'hide',
+      };
+      const action = actionMap[String(data?.action || '').toLowerCase()] || 'dismiss';
+      return apiFetch(`/v1/community/reports/${reportId}`, {
+        service: 'legacyCommunity',
         method: 'PATCH',
         auth: true,
-        body: data,
+        body: { action, note: data?.note },
       });
     },
   };
@@ -1279,8 +1301,8 @@
      * @returns {Promise<{question: string, hints: Array, tags: Array, finalAnswer: string}>}
      */
     async ask(question) {
-      return apiFetch('/api/community/chatbot/ask', {
-        baseUrl: 'https://nibras-backend.up.railway.app',
+      return apiFetch('/v1/community/chatbot/ask', {
+        service: 'legacyCommunity',
         method: 'POST',
         auth: true,
         body: { question },
@@ -1295,7 +1317,7 @@
     async publish(data) {
       const payload = normalizePublishPayload(data);
       try {
-        return await apiFetch('/community/chatbot/publish', {
+        return await apiFetch('/v1/community/chatbot/publish', {
           service: 'legacyCommunity',
           method: 'POST',
           auth: true,
@@ -1693,7 +1715,7 @@
      */
     async listByCourse(courseId, filters = {}) {
       return apiFetch(
-        `/community/threads/course/${courseId}${toQueryString(filters)}`,
+        `/v1/community/threads/course/${courseId}${toQueryString(filters)}`,
         {
           service: 'community',
           method: 'GET',
@@ -1708,7 +1730,7 @@
      * @returns {Promise<{thread: object}>}
      */
     async getById(threadId) {
-      return apiFetch(`/community/threads/${threadId}`, {
+      return apiFetch(`/v1/community/threads/${threadId}`, {
         service: 'community',
         method: 'GET',
         auth: true,
@@ -1722,7 +1744,7 @@
      * @returns {Promise<{thread: object}>}
      */
     async create(courseId, data) {
-      return apiFetch(`/community/threads/${courseId}`, {
+      return apiFetch(`/v1/community/threads/${courseId}`, {
         service: 'community',
         method: 'POST',
         auth: true,
@@ -1737,7 +1759,7 @@
      * @returns {Promise<{thread: object}>}
      */
     async update(threadId, data) {
-      return apiFetch(`/community/threads/${threadId}`, {
+      return apiFetch(`/v1/community/threads/${threadId}`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
@@ -1751,7 +1773,7 @@
      * @returns {Promise<{message: string}>}
      */
     async delete(threadId) {
-      return apiFetch(`/community/threads/${threadId}`, {
+      return apiFetch(`/v1/community/threads/${threadId}`, {
         service: 'community',
         method: 'DELETE',
         auth: true,
@@ -1759,7 +1781,7 @@
     },
 
     async pin(threadId) {
-      return apiFetch(`/community/threads/${threadId}/pin`, {
+      return apiFetch(`/v1/community/threads/${threadId}/pin`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
@@ -1768,7 +1790,7 @@
     },
 
     async unpin(threadId) {
-      return apiFetch(`/community/threads/${threadId}/unpin`, {
+      return apiFetch(`/v1/community/threads/${threadId}/unpin`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
@@ -1777,7 +1799,7 @@
     },
 
     async close(threadId) {
-      return apiFetch(`/community/threads/${threadId}/close`, {
+      return apiFetch(`/v1/community/threads/${threadId}/close`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
@@ -1786,7 +1808,7 @@
     },
 
     async open(threadId) {
-      return apiFetch(`/community/threads/${threadId}/open`, {
+      return apiFetch(`/v1/community/threads/${threadId}/open`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
@@ -1805,7 +1827,7 @@
      * @returns {Promise<{posts: Array}>}
      */
     async listByThread(threadId) {
-      return apiFetch(`/community/posts/thread/${threadId}`, {
+      return apiFetch(`/v1/community/posts/thread/${threadId}`, {
         service: 'community',
         method: 'GET',
         auth: true,
@@ -1818,7 +1840,7 @@
      * @returns {Promise<{post: object}>}
      */
     async getById(postId) {
-      return apiFetch(`/community/posts/${postId}`, {
+      return apiFetch(`/v1/community/posts/${postId}`, {
         service: 'community',
         method: 'GET',
         auth: true,
@@ -1832,7 +1854,7 @@
      * @returns {Promise<{post: object}>}
      */
     async create(threadId, data) {
-      return apiFetch(`/community/posts/${threadId}`, {
+      return apiFetch(`/v1/community/posts/${threadId}`, {
         service: 'community',
         method: 'POST',
         auth: true,
@@ -1847,7 +1869,7 @@
      * @returns {Promise<{post: object}>}
      */
     async update(postId, data) {
-      return apiFetch(`/community/posts/${postId}`, {
+      return apiFetch(`/v1/community/posts/${postId}`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
@@ -1861,7 +1883,7 @@
      * @returns {Promise<{message: string}>}
      */
     async delete(postId) {
-      return apiFetch(`/community/posts/${postId}`, {
+      return apiFetch(`/v1/community/posts/${postId}`, {
         service: 'community',
         method: 'DELETE',
         auth: true,
@@ -1869,7 +1891,7 @@
     },
 
     async pin(postId) {
-      return apiFetch(`/community/posts/${postId}/pin`, {
+      return apiFetch(`/v1/community/posts/${postId}/pin`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
@@ -1878,7 +1900,7 @@
     },
 
     async accept(postId) {
-      return apiFetch(`/community/posts/${postId}/accept`, {
+      return apiFetch(`/v1/community/posts/${postId}/accept`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
@@ -2147,26 +2169,51 @@
   };
 
   const getCompetitionsBaseCandidates = () => {
-    // Use Nibras-Backend (admin service) as primary
+    const gatewayBase = normalizeCompetitionsServiceBaseUrl(
+      resolveServiceUrl('competitions'),
+    );
     const adminBase = normalizeCompetitionsServiceBaseUrl(
       resolveServiceUrl('admin'),
     );
-    const candidates = [adminBase];
-
-    // Fallback to separate competitions service if configured
-    const configured = normalizeCompetitionsServiceBaseUrl(
-      resolveServiceUrl('competitions'),
-    );
-    if (configured && configured !== adminBase) {
-      candidates.push(configured);
-      if (/\/api$/i.test(configured)) {
-        candidates.push(configured.replace(/\/api$/i, ''));
-      } else {
-        candidates.push(`${configured}/api`);
-      }
+    const candidates = [];
+    if (gatewayBase) {
+      candidates.push(gatewayBase.replace(/\/api$/i, ''));
+      candidates.push(gatewayBase);
     }
-
+    if (adminBase && !candidates.includes(adminBase)) {
+      candidates.push(adminBase);
+    }
     return Array.from(new Set(candidates.filter(Boolean)));
+  };
+
+  const toV1CompetitionPaths = (pathCandidates) => {
+    const paths = Array.isArray(pathCandidates)
+      ? pathCandidates
+      : [pathCandidates];
+    const expanded = [];
+    paths.forEach((path) => {
+      const raw = String(path || '');
+      if (!raw) return;
+      if (raw.startsWith('/v1/')) {
+        expanded.push(raw);
+        return;
+      }
+      if (raw.startsWith('/api/')) {
+        expanded.push(raw.replace(/^\/api/, '/v1'));
+        expanded.push(raw);
+        return;
+      }
+      expanded.push(`/v1${raw.startsWith('/') ? raw : `/${raw}`}`);
+      expanded.push(raw);
+    });
+    return Array.from(new Set(expanded));
+  };
+
+  const requestInternalContest = async (path, options = {}) => {
+    const normalizedPath = String(path || '').startsWith('/api/')
+      ? path
+      : `/api${String(path || '').startsWith('/') ? path : `/${path}`}`;
+    return apiFetch(normalizedPath, Object.assign({}, options, { service: 'admin' }));
   };
 
   const isCompetitionsCompatibilityRetryableError = (error) => {
@@ -2188,25 +2235,40 @@
     pathCandidates,
     options = {},
   ) => {
-    const paths = Array.isArray(pathCandidates)
-      ? pathCandidates
-      : [pathCandidates];
+    const paths = toV1CompetitionPaths(pathCandidates);
     const baseCandidates = getCompetitionsBaseCandidates();
     let lastError = null;
 
     for (let b = 0; b < baseCandidates.length; b += 1) {
       const baseUrl = baseCandidates[b];
-      // Determine service: use 'admin' for Nibras-Backend URLs, 'competitions' for others
-      const isAdminUrl = baseUrl && baseUrl.includes('railway.app');
-      const service = isAdminUrl ? 'admin' : 'competitions';
+      const isAdminBase = /\/api$/i.test(String(baseUrl || ''));
 
       for (let p = 0; p < paths.length; p += 1) {
         const path = paths[p];
+        const useAdminPath = isAdminBase && path.startsWith('/api/');
+        const useV1OnGateway = !isAdminBase && path.startsWith('/v1/');
+        const useLegacyOnGateway = !isAdminBase && !path.startsWith('/v1/');
+        if (isAdminBase && path.startsWith('/v1/') && !useAdminPath) {
+          continue;
+        }
+        if (!isAdminBase && path.startsWith('/api/')) {
+          continue;
+        }
+        if (
+          isAdminBase &&
+          !path.startsWith('/api/') &&
+          !path.startsWith('/v1/')
+        ) {
+          continue;
+        }
+        if (!useV1OnGateway && !useLegacyOnGateway && !useAdminPath) {
+          continue;
+        }
         try {
           return await apiFetch(
             path,
             Object.assign({}, options, {
-              service,
+              service: isAdminBase ? 'admin' : 'competitions',
               baseUrl: baseUrl || null,
             }),
           );
@@ -2223,7 +2285,8 @@
 
   const competitionsService = {
     async getMe() {
-      const payload = await requestCompetitionsWithCompatibility('/auth/me', {
+      const payload = await apiFetch('/auth/me', {
+        service: 'admin',
         method: 'GET',
         auth: true,
       });
@@ -2268,15 +2331,11 @@
     async bookmarkContest(id) {
       const contestId = encodeURIComponent(String(id || ''));
       const payload = await requestCompetitionsWithCompatibility(
-        [
-          `/user-contests/${contestId}/bookmark`,
-          `/user/contests/${contestId}/bookmark`,
-          `/contests/user-contests/${contestId}/bookmark`,
-        ],
+        `/user-contests/${contestId}/bookmark`,
         {
           method: 'POST',
           auth: true,
-          body: {},
+          body: { on: true },
         },
       );
       return {
@@ -2288,14 +2347,11 @@
     async removeBookmark(id) {
       const contestId = encodeURIComponent(String(id || ''));
       const payload = await requestCompetitionsWithCompatibility(
-        [
-          `/user-contests/${contestId}/bookmark`,
-          `/user/contests/${contestId}/bookmark`,
-          `/contests/user-contests/${contestId}/bookmark`,
-        ],
+        `/user-contests/${contestId}/bookmark`,
         {
-          method: 'DELETE',
+          method: 'POST',
           auth: true,
+          body: { on: false },
         },
       );
       return {
@@ -2330,15 +2386,11 @@
     async setReminder(id) {
       const contestId = encodeURIComponent(String(id || ''));
       const payload = await requestCompetitionsWithCompatibility(
-        [
-          `/user-contests/${contestId}/reminder`,
-          `/user/contests/${contestId}/reminder`,
-          `/contests/user-contests/${contestId}/reminder`,
-        ],
+        `/user-contests/${contestId}/reminder`,
         {
           method: 'POST',
           auth: true,
-          body: {},
+          body: { on: true },
         },
       );
       return {
@@ -2350,14 +2402,11 @@
     async removeReminder(id) {
       const contestId = encodeURIComponent(String(id || ''));
       const payload = await requestCompetitionsWithCompatibility(
-        [
-          `/user-contests/${contestId}/reminder`,
-          `/user/contests/${contestId}/reminder`,
-          `/contests/user-contests/${contestId}/reminder`,
-        ],
+        `/user-contests/${contestId}/reminder`,
         {
-          method: 'DELETE',
+          method: 'POST',
           auth: true,
+          body: { on: false },
         },
       );
       return {
@@ -2391,12 +2440,8 @@
 
     async joinContest(id) {
       const contestId = encodeURIComponent(String(id || ''));
-      const payload = await requestCompetitionsWithCompatibility(
-        [
-          `/user-contests/${contestId}/join`,
-          `/user/contests/${contestId}/join`,
-          `/contests/user-contests/${contestId}/join`,
-        ],
+      const payload = await requestInternalContest(
+        `/contests/${contestId}/register`,
         {
           method: 'POST',
           auth: true,
@@ -2404,7 +2449,7 @@
         },
       );
       return {
-        message: payload?.message || 'Contest joined successfully',
+        message: payload?.message || 'Contest registration successful',
         data: unwrapApiData(payload),
       };
     },
@@ -2465,13 +2510,14 @@
     },
 
     async startVerification(platform) {
+      const host = encodeURIComponent(String(platform || ''));
       const payload = await requestCompetitionsWithCompatibility(
-        ['/contests/accounts/verify/start'],
+        `/contests/accounts/${host}/verify`,
         {
           method: 'POST',
           auth: true,
-          body: { platform },
-          timeoutMs: 60000, // 60 second timeout
+          body: {},
+          timeoutMs: 60000,
         },
       );
       return {
@@ -2481,13 +2527,14 @@
     },
 
     async checkVerification(platform) {
+      const host = encodeURIComponent(String(platform || ''));
       const payload = await requestCompetitionsWithCompatibility(
-        ['/contests/accounts/verify/check'],
+        `/contests/accounts/${host}/verify`,
         {
           method: 'POST',
           auth: true,
-          body: { platform },
-          timeoutMs: 60000, // 60 second timeout
+          body: {},
+          timeoutMs: 60000,
         },
       );
       return {
@@ -2563,245 +2610,169 @@
 
     async getRoadmap() {
       const payload = await requestCompetitionsWithCompatibility(
-        '/problems/roadmap',
+        '/practice/cp-roadmap/roadmap',
         {
           method: 'GET',
           auth: true,
         },
       );
-      return unwrapApiData(payload) || {};
+      return unwrapApiData(payload) || payload || {};
     },
 
     async getProgress() {
       try {
         const payload = await requestCompetitionsWithCompatibility(
-          ['/problems/progress'],
+          '/practice/cp-roadmap/stats',
           {
             method: 'GET',
             auth: true,
           },
         );
-        return unwrapApiData(payload) || {};
+        return unwrapApiData(payload) || payload || {};
       } catch (e) {
         return {};
       }
+    },
+
+    async listNibras75Problems(filters = {}) {
+      const query = buildQueryString({
+        q: filters.q,
+        sort: filters.sort,
+        status: filters.status,
+        page: filters.page,
+        limit: filters.limit,
+      });
+      const payload = await requestCompetitionsWithCompatibility(
+        `/practice/nibras-75/problems${query}`,
+        {
+          method: 'GET',
+          auth: true,
+        },
+      );
+      return unwrapApiData(payload) || payload || {};
+    },
+
+    async getNibras75Stats() {
+      const payload = await requestCompetitionsWithCompatibility(
+        '/practice/nibras-75/stats',
+        {
+          method: 'GET',
+          auth: true,
+        },
+      );
+      return unwrapApiData(payload) || payload || {};
+    },
+
+    async getDailyProblemToday() {
+      const payload = await requestCompetitionsWithCompatibility(
+        '/daily-problem/today',
+        {
+          method: 'GET',
+          auth: true,
+        },
+      );
+      return unwrapApiData(payload) || payload || {};
+    },
+
+    async verifyDailyProblem() {
+      const payload = await requestCompetitionsWithCompatibility(
+        '/daily-problem/today/verify',
+        {
+          method: 'POST',
+          auth: true,
+          body: {},
+        },
+      );
+      return unwrapApiData(payload) || payload || {};
+    },
+
+    async solveDailyProblem() {
+      const payload = await requestCompetitionsWithCompatibility(
+        '/daily-problem/today/solve',
+        {
+          method: 'POST',
+          auth: true,
+          body: {},
+        },
+      );
+      return unwrapApiData(payload) || payload || {};
     },
   };
 
   // ============================================================
   // Team Service (competitions backend)
   // ============================================================
+  const emptyTeamsResponse = () => ({
+    teams: [],
+    pagination: null,
+    message:
+      'Standalone teams are not available yet. Create teams from an internal contest page.',
+  });
+
   const teamService = {
-    async listTeams(filters = {}) {
-      const query = buildQueryString({
-        page: filters.page,
-        limit: filters.limit,
-        contestId: filters.contestId,
-        search: filters.search,
-      });
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/teams${query}`],
-        {
-          method: 'GET',
-          auth: false,
-        },
-      );
-      const data = unwrapApiData(payload) || {};
-      return {
-        teams: Array.isArray(data.teams)
-          ? data.teams
-          : Array.isArray(data)
-            ? data
-            : [],
-        pagination: data.pagination || payload?.pagination || null,
-      };
+    async listTeams() {
+      return emptyTeamsResponse();
     },
 
-    async getTeamById(id) {
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/teams/${encodeURIComponent(String(id || ''))}`],
+    async getTeamById() {
+      return null;
+    },
+
+    async createTeam(data = {}) {
+      const contestId = data.contestId || data.contest_id;
+      if (!contestId) {
+        throw new Error(
+          'Contest teams require a contest. Open an internal contest and create a team there.',
+        );
+      }
+      const payload = await requestInternalContest(
+        `/contests/${encodeURIComponent(String(contestId))}/teams`,
         {
-          method: 'GET',
+          method: 'POST',
           auth: true,
+          body: data,
         },
       );
-      return unwrapApiData(payload);
-    },
-
-    async createTeam(data) {
-      const payload = await requestCompetitionsWithCompatibility(['/teams'], {
-        method: 'POST',
-        auth: true,
-        body: data,
-      });
       return {
         message: payload?.message || 'Team created successfully',
         data: unwrapApiData(payload),
       };
     },
 
-    async updateTeam(id, data) {
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/teams/${encodeURIComponent(String(id || ''))}`],
-        {
-          method: 'PUT',
-          auth: true,
-          body: data,
-        },
-      );
-      return {
-        message: payload?.message || 'Team updated successfully',
-        data: unwrapApiData(payload),
-      };
+    async updateTeam() {
+      throw new Error('Standalone team updates are not supported.');
     },
 
-    async deleteTeam(id) {
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/teams/${encodeURIComponent(String(id || ''))}`],
-        {
-          method: 'DELETE',
-          auth: true,
-        },
-      );
-      return {
-        message: payload?.message || 'Team deleted successfully',
-        data: unwrapApiData(payload),
-      };
+    async deleteTeam() {
+      throw new Error('Standalone team deletion is not supported.');
     },
 
-    async joinTeam(id) {
-      const payload = await requestCompetitionsWithCompatibility(
-        [
-          `/teams/${encodeURIComponent(String(id || ''))}/join`,
-          `/user/teams/${encodeURIComponent(String(id || ''))}/join`,
-        ],
-        {
-          method: 'POST',
-          auth: true,
-          body: {},
-        },
-      );
-      return {
-        message: payload?.message || 'Joined team successfully',
-        data: unwrapApiData(payload),
-      };
+    async joinTeam() {
+      throw new Error('Join teams from the contest detail page.');
     },
 
-    async leaveTeam(id) {
-      const payload = await requestCompetitionsWithCompatibility(
-        [
-          `/teams/${encodeURIComponent(String(id || ''))}/leave`,
-          `/user/teams/${encodeURIComponent(String(id || ''))}/leave`,
-        ],
-        {
-          method: 'POST',
-          auth: true,
-          body: {},
-        },
-      );
-      return {
-        message: payload?.message || 'Left team successfully',
-        data: unwrapApiData(payload),
-      };
+    async leaveTeam() {
+      throw new Error('Leave teams from the contest detail page.');
     },
 
-    async listMyTeams(filters = {}) {
-      const query = buildQueryString({
-        page: filters.page,
-        limit: filters.limit,
-      });
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/user/teams${query}`, `/teams/mine${query}`],
-        {
-          method: 'GET',
-          auth: true,
-        },
-      );
-      const data = unwrapApiData(payload) || {};
-      return {
-        teams: Array.isArray(data.teams)
-          ? data.teams
-          : Array.isArray(data)
-            ? data
-            : [],
-        pagination: data.pagination || payload?.pagination || null,
-      };
+    async listMyTeams() {
+      return emptyTeamsResponse();
     },
 
-    async inviteToTeam(teamId, userId) {
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/teams/${encodeURIComponent(String(teamId || ''))}/invite`],
-        {
-          method: 'POST',
-          auth: true,
-          body: { userId },
-        },
-      );
-      return {
-        message: payload?.message || 'Invitation sent',
-        data: unwrapApiData(payload),
-      };
+    async inviteToTeam() {
+      throw new Error('Team invitations are not supported for standalone teams.');
     },
 
-    async respondToInvite(teamId, accept) {
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/teams/${encodeURIComponent(String(teamId || ''))}/invite/respond`],
-        {
-          method: 'POST',
-          auth: true,
-          body: { accept },
-        },
-      );
-      return {
-        message: payload?.message || 'Response recorded',
-        data: unwrapApiData(payload),
-      };
+    async respondToInvite() {
+      return { invitations: [], pagination: null };
     },
 
-    async listTeamMembers(teamId, filters = {}) {
-      const query = buildQueryString({
-        page: filters.page,
-        limit: filters.limit,
-      });
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/teams/${encodeURIComponent(String(teamId || ''))}/members${query}`],
-        {
-          method: 'GET',
-          auth: true,
-        },
-      );
-      const data = unwrapApiData(payload) || {};
-      return {
-        members: Array.isArray(data.members)
-          ? data.members
-          : Array.isArray(data)
-            ? data
-            : [],
-        pagination: data.pagination || payload?.pagination || null,
-      };
+    async listTeamMembers() {
+      return { members: [], pagination: null };
     },
 
-    async listMyInvitations(filters = {}) {
-      const query = buildQueryString({
-        page: filters.page,
-        limit: filters.limit,
-      });
-      const payload = await requestCompetitionsWithCompatibility(
-        [`/user/teams/invitations${query}`, `/teams/invitations/mine${query}`],
-        {
-          method: 'GET',
-          auth: true,
-        },
-      );
-      const data = unwrapApiData(payload) || {};
-      return {
-        invitations: Array.isArray(data.invitations)
-          ? data.invitations
-          : Array.isArray(data)
-            ? data
-            : [],
-        pagination: data.pagination || payload?.pagination || null,
-      };
+    async listMyInvitations() {
+      return { invitations: [], pagination: null };
     },
   };
 
@@ -3214,6 +3185,18 @@
   // Courses Service (Nibras-Backend GitHub: Railway)
   // Base: https://nibras-backend.up.railway.app/api/courses
   // ============================================================
+  const coursesApiFetch = async (path, options = {}) => {
+    try {
+      return await apiFetch(path, Object.assign({}, options, { service: 'courses' }));
+    } catch (error) {
+      const status = Number(error?.status || error?.payload?.status || 0);
+      if (status === 401 || status === 403) {
+        return { success: false, data: null, error: 'unauthorized' };
+      }
+      throw error;
+    }
+  };
+
   const coursesService = {
     /**
      * List all courses with pagination and search
@@ -3222,8 +3205,7 @@
      * @returns {Promise<{success: boolean, data: {items: Array}, meta: object}>}
      */
     async list(filters = {}) {
-      return apiFetch(`/courses${toQueryString(filters)}`, {
-        service: 'courses',
+      return coursesApiFetch(`/courses${toQueryString(filters)}`, {
         method: 'GET',
         auth: true,
       });
@@ -3267,8 +3249,7 @@
      * @returns {Promise<{success: boolean, data: object}>}
      */
     async getByLevel(level) {
-      return apiFetch(`/courses/level/${encodeURIComponent(String(level))}`, {
-        service: 'courses',
+      return coursesApiFetch(`/courses/level/${encodeURIComponent(String(level))}`, {
         method: 'GET',
         auth: true,
       });
@@ -3286,6 +3267,14 @@
           this.list({ page: 1, limit: 100 }),
           this.getGlobalProgress(),
         ]);
+
+        if (coursesResponse?.success === false) {
+          return {
+            success: false,
+            data: null,
+            error: coursesResponse.error || 'unauthorized',
+          };
+        }
 
         const courses = Array.isArray(coursesResponse?.data)
           ? coursesResponse.data
@@ -3358,10 +3347,9 @@
      * @returns {Promise<{success: boolean, data: object}>}
      */
     async getProgress(courseId) {
-      return apiFetch(
+      return coursesApiFetch(
         `/courses/${encodeURIComponent(String(courseId))}/progress`,
         {
-          service: 'courses',
           method: 'GET',
           auth: true,
         },
@@ -3395,8 +3383,7 @@
      * @returns {Promise<{success: boolean, data: object}>}
      */
     async getGlobalProgress() {
-      return apiFetch('/courses/progress/global', {
-        service: 'courses',
+      return coursesApiFetch('/courses/progress/global', {
         method: 'GET',
         auth: true,
       });
@@ -3470,8 +3457,7 @@
      * @returns {Promise<{data: Array}>}
      */
     async list(filters = {}) {
-      return apiFetch(`/courses${toQueryString(filters)}`, {
-        service: 'courses',
+      return coursesApiFetch(`/courses${toQueryString(filters)}`, {
         method: 'GET',
         auth: true,
       });

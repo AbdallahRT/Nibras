@@ -181,54 +181,54 @@ window.NibrasReact.run(() => {
   const threadService = services.threadService || {
     listByCourse: (courseId, filters = {}) =>
       requestCommunity(
-        `/community/threads/course/${courseId}${toQueryString(filters)}`,
+        `/v1/community/threads/course/${courseId}${toQueryString(filters)}`,
         { method: 'GET', auth: true },
       ),
     create: (courseId, data) =>
-      requestCommunity(`/community/threads/${courseId}`, {
+      requestCommunity(`/v1/community/threads/${courseId}`, {
         method: 'POST',
         auth: true,
         body: data,
       }),
     pin: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}/pin`, {
+      requestCommunity(`/v1/community/threads/${threadId}/pin`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     unpin: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}/unpin`, {
+      requestCommunity(`/v1/community/threads/${threadId}/unpin`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     close: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}/close`, {
+      requestCommunity(`/v1/community/threads/${threadId}/close`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     open: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}/open`, {
+      requestCommunity(`/v1/community/threads/${threadId}/open`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     delete: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}`, {
+      requestCommunity(`/v1/community/threads/${threadId}`, {
         method: 'DELETE',
         auth: true,
       }),
   };
   const communityVoteService = services.communityVoteService || {
     cast: (data) =>
-      requestCommunity('/community/votes', {
+      requestCommunity('/v1/community/votes', {
         method: 'POST',
         auth: true,
         body: data,
       }),
     getMyVote: ({ targetType, targetId }) =>
-      requestCommunity(`/community/votes/${targetType}/${targetId}`, {
+      requestCommunity(`/v1/community/votes/${targetType}/${targetId}`, {
         method: 'GET',
         auth: true,
       }),

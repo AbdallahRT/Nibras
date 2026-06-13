@@ -1451,6 +1451,8 @@ model CommunityPost {
   authorId         String
   body             String
   votesCount       Int                       @default(0)
+  pinned           Boolean                   @default(false)
+  accepted         Boolean                   @default(false)
   moderationStatus CommunityModerationStatus @default(visible)
   createdAt        DateTime                  @default(now())
   updatedAt        DateTime                  @updatedAt

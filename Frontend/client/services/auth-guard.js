@@ -4,9 +4,32 @@
   var script = document.currentScript;
   var loginPage =
     script.getAttribute('data-login') || '../../Login/loginPage/login.html';
-  var apiBase =
-    script.getAttribute('data-api') ||
-    'https://nibras-backend.up.railway.app/api';
+
+  function resolveApiBase(configured) {
+    try {
+      var host = window.location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return window.location.origin.replace(/\/+$/, '') + '/api';
+      }
+      var stored =
+        localStorage.getItem('nibras_admin_api_url') ||
+        localStorage.getItem('nibras_api_url') ||
+        window.NIBRAS_API_URL ||
+        window.NIBRAS_BACKEND_URL;
+      if (stored && typeof stored === 'string') {
+        var normalized = stored.trim().replace(/\/+$/, '');
+        if (normalized) return normalized;
+      }
+    } catch (_) {}
+    return (
+      configured ||
+      window.NIBRAS_API_URL ||
+      window.NIBRAS_BACKEND_URL ||
+      'https://nibras-backend.up.railway.app/api'
+    ).replace(/\/+$/, '');
+  }
+
+  var apiBase = resolveApiBase(script.getAttribute('data-api'));
 
   function redirectToLogin() {
     window.location.replace(loginPage);

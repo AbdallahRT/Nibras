@@ -303,7 +303,7 @@ window.NibrasReact.run(() => {
     'googleSignInContainer',
   );
   const googleAuthStatus = document.getElementById('googleAuthStatus');
-  const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (sessionStorage.getItem('google_auth_error')) {
     const err = sessionStorage.getItem('google_auth_error');
@@ -433,11 +433,8 @@ window.NibrasReact.run(() => {
         setNotice('Please enter your email.', 'error');
         return;
       }
-      if (!gmailRegex.test(email)) {
-        setNotice(
-          'Use a valid @gmail.com address. OTP email verification is Gmail-only in this backend.',
-          'error',
-        );
+      if (!emailRegex.test(email)) {
+        setNotice('Please enter a valid email address.', 'error');
         return;
       }
       if (password.length < 6) {
@@ -488,11 +485,8 @@ window.NibrasReact.run(() => {
         setNotice('Please provide both email and OTP code.', 'error');
         return;
       }
-      if (!gmailRegex.test(email)) {
-        setNotice(
-          'OTP verification requires a valid @gmail.com address.',
-          'error',
-        );
+      if (!emailRegex.test(email)) {
+        setNotice('Please enter a valid email address.', 'error');
         return;
       }
 

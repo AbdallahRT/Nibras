@@ -37,7 +37,13 @@ window.NibrasReact.run(() => {
       const filters = {};
       if (status && status !== 'all') filters.status = status;
       const result = await flagService.getQueue(filters);
-      const data = result?.data || result?.flags || result || [];
+      const data =
+        result?.reports ||
+        result?.data?.reports ||
+        result?.data ||
+        result?.flags ||
+        result ||
+        [];
       const items = Array.isArray(data) ? data : [];
 
       if (queueCount) {
@@ -54,8 +60,14 @@ window.NibrasReact.run(() => {
       items.forEach(function (flag) {
         const targetType = flag.targetType || 'unknown';
         const reason = flag.reason || 'No reason provided';
-        const statusClass = flag.status === 'resolved' ? 'resolved' : '';
-        const statusLabel = flag.status === 'resolved' ? ' (Resolved)' : '';
+        const statusClass =
+          flag.status === 'actioned' || flag.status === 'dismissed'
+            ? 'resolved'
+            : '';
+        const statusLabel =
+          flag.status === 'actioned' || flag.status === 'dismissed'
+            ? ' (Resolved)'
+            : '';
         const reporterName =
           flag.reporter?.name || flag.reporter || 'Anonymous';
         const targetPreview =
@@ -80,7 +92,8 @@ window.NibrasReact.run(() => {
                             <span><i class="fa-regular fa-clock"></i> Status: ${flag.status || 'pending'}${statusLabel}</span>
                         </div>
                         ${
-                          flag.status !== 'resolved'
+                          flag.status !== 'actioned' &&
+                          flag.status !== 'dismissed'
                             ? `
                         <div class="flag-actions">
                             <button class="btn-dismiss" data-action="dismiss" data-id="${flag._id || flag.id}"><i class="fa-regular fa-circle-check"></i> Dismiss</button>

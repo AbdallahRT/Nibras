@@ -55,3 +55,13 @@ export function canAcceptAnswer(
   if (questionAuthorId === auth.user.id) return true;
   return hasAnyInstructorAccess(auth);
 }
+
+export function canAcceptPost(
+  auth: AuthenticatedRequest,
+  threadAuthorId: string,
+  courseId: string,
+): boolean {
+  if (auth.user.systemRole === 'admin') return true;
+  if (threadAuthorId === auth.user.id) return true;
+  return canManageCourseDiscussions(auth, courseId);
+}

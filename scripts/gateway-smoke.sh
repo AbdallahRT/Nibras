@@ -81,8 +81,21 @@ step "Seeded credential login via gateway"
 request POST "${API}/auth/login" '{"email":"demo@nibras.dev","password":"local123"}'
 assert_status "200" "$HTTP_STATUS" "POST /api/auth/login"
 echo "$HTTP_BODY" | jq -e '.accessToken' >/dev/null || fail "login: missing accessToken"
+DEMO_TOKEN="$(echo "$HTTP_BODY" | jq -r '.accessToken')"
 
-TEST_EMAIL="smoke-$(date +%s)@gmail.com"
+step "Tracking courses via gateway (authenticated)"
+out="$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer ${DEMO_TOKEN}" "${BASE}/v1/tracking/courses?page=1&limit=5")"
+HTTP_STATUS="${out##*$'\n'}"
+HTTP_BODY="${out%$'\n'*}"
+assert_status "200" "$HTTP_STATUS" "GET /v1/tracking/courses"
+COURSE_COUNT="$(echo "$HTTP_BODY" | jq 'if type == "array" then length else (.courses // .data // []) | length end')"
+[[ "${COURSE_COUNT:-0}" -gt 0 ]] || fail "tracking courses: expected non-empty list, got ${COURSE_COUNT:-0}"
+
+step "Courses page via gateway"
+request GET "${BASE}/Courses/courses.html"
+assert_status "200" "$HTTP_STATUS" "GET /Courses/courses.html"
+
+TEST_EMAIL="smoke-$(date +%s)@example.com"
 TEST_PASSWORD="smokepass1"
 
 step "Register + verify OTP via gateway"
@@ -114,6 +127,40 @@ if echo "$HTTP_BODY" | jq -e '.warning' >/dev/null 2>&1; then
 else
   echo "LeetCode practice route OK"
 fi
+
+step "Community questions via gateway"
+request GET "${BASE}/v1/community/questions?page=1&limit=5"
+assert_status "200" "$HTTP_STATUS" "GET /v1/community/questions"
+
+step "Community legacy alias via gateway"
+request GET "${BASE}/community/questions?page=1&limit=5"
+assert_status "200" "$HTTP_STATUS" "GET /community/questions (rewritten)"
+
+step "Community tags via gateway"
+request GET "${BASE}/v1/community/tags"
+assert_status "200" "$HTTP_STATUS" "GET /v1/community/tags"
+
+step "Competitions contests via gateway"
+request GET "${BASE}/v1/contests?page=1&limit=5"
+assert_status "200" "$HTTP_STATUS" "GET /v1/contests"
+
+step "Competitions ranking via gateway"
+out="$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer ${DEMO_TOKEN}" "${BASE}/v1/ranking?page=1&limit=5")"
+HTTP_STATUS="${out##*$'\n'}"
+HTTP_BODY="${out%$'\n'*}"
+assert_status "200" "$HTTP_STATUS" "GET /v1/ranking"
+
+step "Nibras 75 problems via gateway"
+out="$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer ${DEMO_TOKEN}" --max-time 15 "${BASE}/v1/practice/nibras-75/problems?page=1&limit=5")"
+HTTP_STATUS="${out##*$'\n'}"
+HTTP_BODY="${out%$'\n'*}"
+assert_status "200" "$HTTP_STATUS" "GET /v1/practice/nibras-75/problems"
+
+step "CP Roadmap via gateway"
+out="$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer ${DEMO_TOKEN}" --max-time 15 "${BASE}/v1/practice/cp-roadmap/roadmap")"
+HTTP_STATUS="${out##*$'\n'}"
+HTTP_BODY="${out%$'\n'*}"
+assert_status "200" "$HTTP_STATUS" "GET /v1/practice/cp-roadmap/roadmap"
 
 echo ""
 echo -e "${GREEN}Gateway smoke checks passed.${NC}"

@@ -8017,6 +8017,14 @@
       return byLocalId;
     };
 
+    const loadFromTracking = () =>
+      trackApiFetch('/v1/tracking/courses?page=1&limit=100').then((payload) =>
+        processCourses(parseArrayPayload(payload)),
+      );
+
+    const preferLocalFallback =
+      window.NIBRAS_PREFER_LOCAL_TRACKING_FALLBACK === true;
+
     // Use Nibras-Backend (Railway) instead of tracking service
     const backendCoursesService = window.NibrasServices?.backendCoursesService;
 
@@ -8030,12 +8038,24 @@
       remoteCourseState.loadingPromise = backendCoursesService
         .list({ page: 1, limit: 100 })
         .then((payload) => {
+          if (payload?.success === false) {
+            console.warn(
+              '[NibrasCourses] Railway courses unauthorized, falling back to tracking',
+            );
+            return loadFromTracking();
+          }
           const data = unwrapApiData(payload);
           const remoteList = Array.isArray(data)
             ? data
             : Array.isArray(data?.courses)
               ? data.courses
               : [];
+          if (!remoteList.length && preferLocalFallback) {
+            console.warn(
+              '[NibrasCourses] Railway returned no courses, falling back to tracking',
+            );
+            return loadFromTracking();
+          }
           return processCourses(remoteList);
         })
         .catch((error) => {
@@ -8043,9 +8063,7 @@
             '[NibrasCourses] Failed to load from Nibras-Backend, falling back to tracking:',
             error?.message || error,
           );
-          return trackApiFetch('/v1/tracking/courses?page=1&limit=100').then(
-            (payload) => processCourses(parseArrayPayload(payload)),
-          );
+          return loadFromTracking();
         })
         .finally(() => {
           remoteCourseState.loadingPromise = null;

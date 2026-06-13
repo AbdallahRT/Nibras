@@ -11,11 +11,11 @@ export type AdminAuthUser = {
   emailVerified?: boolean;
 };
 
-const GMAIL_REGEX = /^[^\s@]+@gmail\.com$/i;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const OTP_TTL_MS = 15 * 60 * 1000;
 
-export function isGmailAddress(email: string): boolean {
-  return GMAIL_REGEX.test(email.trim().toLowerCase());
+export function isValidEmail(email: string): boolean {
+  return EMAIL_REGEX.test(email.trim().toLowerCase());
 }
 
 export async function hashPassword(plain: string): Promise<string> {
@@ -44,7 +44,7 @@ export function resolveFrontendRole(user: AdminAuthUser): string {
 
 export function toAdminUserPayload(user: AdminAuthUser) {
   const roleName = resolveFrontendRole(user);
-  return {
+  const payload = {
     _id: user.id,
     id: user.id,
     email: user.email,
@@ -53,6 +53,10 @@ export function toAdminUserPayload(user: AdminAuthUser) {
     name: user.displayName || user.username,
     role: { name: roleName },
   };
+  if (roleName === 'student') {
+    return { ...payload, selectedLevel: 'Beginner' };
+  }
+  return payload;
 }
 
 export async function createCliSession(prisma: PrismaClient, userId: string) {

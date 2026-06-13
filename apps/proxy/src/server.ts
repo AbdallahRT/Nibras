@@ -72,7 +72,72 @@ function isPlatformAdminAuthRequest(url = '/'): boolean {
   return PLATFORM_ADMIN_AUTH_PATHS.has(pathname);
 }
 
+const COMPETITIONS_API_PREFIXES = [
+  '/contests',
+  '/user-contests',
+  '/problems',
+  '/ranking',
+  '/practice',
+  '/integrations',
+  '/nibras75',
+  '/cp-roadmap',
+  '/daily-problem',
+] as const;
+
+function isCompetitionsApiPath(pathname: string): boolean {
+  return COMPETITIONS_API_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+function rewriteLegacyApiPath(url = '/'): {
+  url: string;
+  forceFastify: boolean;
+} {
+  const parsed = new URL(url, 'http://localhost');
+  const { pathname } = parsed;
+
+  if (pathname.startsWith('/community/')) {
+    parsed.pathname = `/v1${pathname}`;
+    return { url: `${parsed.pathname}${parsed.search}`, forceFastify: true };
+  }
+
+  if (pathname === '/flags' || pathname.startsWith('/flags/')) {
+    parsed.pathname =
+      pathname === '/flags'
+        ? '/v1/community/reports'
+        : pathname.replace(/^\/flags/, '/v1/community/reports');
+    return { url: `${parsed.pathname}${parsed.search}`, forceFastify: true };
+  }
+
+  if (pathname === '/moderation/queue') {
+    parsed.pathname = '/v1/community/reports';
+    return { url: `${parsed.pathname}${parsed.search}`, forceFastify: true };
+  }
+
+  const moderationResolve = pathname.match(
+    /^\/moderation\/flags\/([^/]+)\/resolve$/,
+  );
+  if (moderationResolve) {
+    parsed.pathname = `/v1/community/reports/${moderationResolve[1]}`;
+    return { url: `${parsed.pathname}${parsed.search}`, forceFastify: true };
+  }
+
+  if (isCompetitionsApiPath(pathname)) {
+    parsed.pathname = pathname.startsWith('/integrations')
+      ? `/v1/competitions${pathname}`
+      : `/v1${pathname}`;
+    return { url: `${parsed.pathname}${parsed.search}`, forceFastify: true };
+  }
+
+  return { url, forceFastify: false };
+}
+
 function isFastifyRequest(url = '/'): boolean {
+  const rewritten = rewriteLegacyApiPath(url);
+  if (rewritten.forceFastify) {
+    return true;
+  }
   return (
     url === '/v1' ||
     url.startsWith('/v1/') ||
@@ -204,6 +269,12 @@ export function buildProxyServer(config: Partial<ProxyConfig> = {}): Server {
   });
 
   const server = http.createServer((request, response) => {
+    const originalUrl = request.url || '/';
+    const rewritten = rewriteLegacyApiPath(originalUrl);
+    if (rewritten.url !== originalUrl) {
+      request.url = rewritten.url;
+    }
+
     const target = pickTarget(request.url, resolved);
     if (!target) {
       handleStaticRequest(request, response, resolved);

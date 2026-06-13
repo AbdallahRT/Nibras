@@ -20,6 +20,8 @@ import {
   assertCourseManage,
   assertCourseView,
   canAcceptAnswer,
+  canManageCourseDiscussions,
+  canAcceptPost,
 } from './access';
 import {
   authorSelect,
@@ -1024,8 +1026,99 @@ export function registerCommunityRoutes(
       return withVotes.map((p) => ({
         ...p,
         _id: p.id,
+        isPinned: p.pinned,
+        isAccepted: p.accepted,
         author: presentAuthor(p.author, reputationByUserId),
       }));
+    },
+  );
+
+  app.patch(
+    '/v1/community/posts/:postId/pin',
+    { schema: { tags: ['community'], summary: 'Pin a post in a thread' } },
+    async (request, reply) => {
+      const auth = await requireUser(request, reply, store);
+      if (!auth) return;
+      const { postId } = request.params as { postId: string };
+      const post = await prisma.communityPost.findUnique({
+        where: { id: postId },
+        include: { thread: true },
+      });
+      if (
+        !post ||
+        post.moderationStatus !== CommunityModerationStatus.visible
+      ) {
+        reply.code(404).send(Errors.notFound('Post'));
+        return;
+      }
+      if (!assertCourseManage(auth, post.thread.courseId, reply)) return;
+      const updated = await prisma.communityPost.update({
+        where: { id: postId },
+        data: { pinned: true, updatedAt: new Date() },
+        include: { author: { select: authorSelect } },
+      });
+      return {
+        post: {
+          ...updated,
+          _id: updated.id,
+          isPinned: updated.pinned,
+          isAccepted: updated.accepted,
+          author: presentAuthor(updated.author),
+        },
+      };
+    },
+  );
+
+  app.patch(
+    '/v1/community/posts/:postId/accept',
+    { schema: { tags: ['community'], summary: 'Accept a post as the answer' } },
+    async (request, reply) => {
+      const auth = await requireUser(request, reply, store);
+      if (!auth) return;
+      const { postId } = request.params as { postId: string };
+      const post = await prisma.communityPost.findUnique({
+        where: { id: postId },
+        include: { thread: true },
+      });
+      if (
+        !post ||
+        post.moderationStatus !== CommunityModerationStatus.visible
+      ) {
+        reply.code(404).send(Errors.notFound('Post'));
+        return;
+      }
+      const canAccept = canAcceptPost(
+        auth,
+        post.thread.authorId,
+        post.thread.courseId,
+      );
+      if (!canAccept) {
+        reply.code(403).send(Errors.forbidden());
+        return;
+      }
+      await prisma.$transaction([
+        prisma.communityPost.updateMany({
+          where: { threadId: post.threadId, id: { not: postId } },
+          data: { accepted: false },
+        }),
+        prisma.communityPost.update({
+          where: { id: postId },
+          data: { accepted: true, updatedAt: new Date() },
+        }),
+      ]);
+      const updated = await prisma.communityPost.findUnique({
+        where: { id: postId },
+        include: { author: { select: authorSelect } },
+      });
+      return {
+        post: {
+          ...updated,
+          _id: updated?.id,
+          isPinned: updated?.pinned,
+          isAccepted: updated?.accepted,
+          author: updated ? presentAuthor(updated.author) : null,
+        },
+      };
     },
   );
 

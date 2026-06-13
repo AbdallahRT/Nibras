@@ -83,6 +83,47 @@ test('admin auth register, verify OTP, and login flow', async (t) => {
   }
 });
 
+test('admin auth accepts non-Gmail email addresses', async (t) => {
+  if (!process.env.DATABASE_URL) {
+    t.skip('DATABASE_URL not set');
+    return;
+  }
+
+  const prisma = getSharedPrisma();
+  const app = buildApp(new PrismaStore(prisma));
+  const email = `user-${Date.now()}@example.com`;
+  await cleanupTestUser(prisma, email);
+
+  try {
+    const registerResponse = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: {
+        name: 'Example User',
+        email,
+        password: TEST_PASSWORD,
+      },
+    });
+    assert.equal(registerResponse.statusCode, 201);
+
+    const otpRecord = await prisma.authVerification.findFirst({
+      where: { identifier: `otp:signup:${email}` },
+    });
+    assert.ok(otpRecord?.value);
+
+    const verifyResponse = await app.inject({
+      method: 'POST',
+      url: '/api/auth/verify-otp',
+      payload: { email, otp: otpRecord.value },
+    });
+    assert.equal(verifyResponse.statusCode, 200);
+    assert.equal(verifyResponse.json().user.email, email);
+  } finally {
+    await cleanupTestUser(prisma, email);
+    await app.close();
+  }
+});
+
 test('admin auth login blocks unverified users with OTP-friendly 403', async (t) => {
   if (!process.env.DATABASE_URL) {
     t.skip('DATABASE_URL not set');

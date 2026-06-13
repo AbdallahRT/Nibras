@@ -203,6 +203,9 @@ async function fetchDashboardFromCoursesBackend() {
   }
 
   const coursesResponse = await coursesService.list({ page: 1, limit: 100 });
+  if (coursesResponse?.success === false) {
+    throw new Error(coursesResponse.error || 'Courses backend unauthorized');
+  }
   const courses = Array.isArray(coursesResponse?.data)
     ? coursesResponse.data
     : Array.isArray(coursesResponse?.data?.courses)
@@ -717,27 +720,54 @@ const runDashboardInit = () => {
       // Load courses for switcher
       await loadCourseSwitcher();
 
+      const isLocalHost = ['localhost', '127.0.0.1'].includes(
+        window.location.hostname,
+      );
+
       let rawCoursesResponse = null;
       let dashboardPayload;
       let dashboardSource = 'tracking';
-      try {
-        rawCoursesResponse = await fetchDashboardFromCoursesBackend();
-        dashboardPayload =
-          transformCoursesDashboardToDashboard(rawCoursesResponse);
-        dashboardSource = 'courses';
-        console.log('[DASHBOARD.JS] Using new courses backend');
-      } catch (coursesError) {
-        console.warn(
-          '[DASHBOARD.JS] Courses backend unavailable, falling back to tracking:',
-          coursesError.message,
-        );
-        // Fall back to tracking backend
+
+      if (isLocalHost || window.NIBRAS_PREFER_LOCAL_TRACKING_FALLBACK) {
         const courseId = selectedCourseId;
         let path = '/v1/tracking/dashboard/student';
         if (courseId) {
           path += `?courseId=${encodeURIComponent(courseId)}`;
         }
         dashboardPayload = await requestJson(path, { method: 'GET' });
+        try {
+          rawCoursesResponse = await fetchDashboardFromCoursesBackend();
+          if (rawCoursesResponse?.stats || rawCoursesResponse?.courses) {
+            dashboardSource = 'courses';
+            console.log(
+              '[DASHBOARD.JS] Tracking dashboard loaded; Railway courses enrichment available',
+            );
+          }
+        } catch (coursesError) {
+          console.warn(
+            '[DASHBOARD.JS] Railway courses unavailable on localhost, using tracking only:',
+            coursesError.message,
+          );
+        }
+      } else {
+        try {
+          rawCoursesResponse = await fetchDashboardFromCoursesBackend();
+          dashboardPayload =
+            transformCoursesDashboardToDashboard(rawCoursesResponse);
+          dashboardSource = 'courses';
+          console.log('[DASHBOARD.JS] Using new courses backend');
+        } catch (coursesError) {
+          console.warn(
+            '[DASHBOARD.JS] Courses backend unavailable, falling back to tracking:',
+            coursesError.message,
+          );
+          const courseId = selectedCourseId;
+          let path = '/v1/tracking/dashboard/student';
+          if (courseId) {
+            path += `?courseId=${encodeURIComponent(courseId)}`;
+          }
+          dashboardPayload = await requestJson(path, { method: 'GET' });
+        }
       }
 
       // Process the dashboardPayload to build dashboardData

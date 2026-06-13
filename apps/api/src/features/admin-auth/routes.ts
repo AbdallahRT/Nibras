@@ -13,7 +13,7 @@ import {
   fetchMicrosoftProfile,
   generateOtp,
   hashPassword,
-  isGmailAddress,
+  isValidEmail,
   storeOtp,
   toAdminUserPayload,
   upsertOAuthUser,
@@ -98,10 +98,10 @@ export function registerAdminAuthRoutes(
         .code(400)
         .send({ message: 'Name, email, and password are required.' });
     }
-    if (!isGmailAddress(email)) {
+    if (!isValidEmail(email)) {
       return reply
         .code(400)
-        .send({ message: 'Registration requires a valid @gmail.com address.' });
+        .send({ message: 'Please enter a valid email address.' });
     }
     if (password.length < 6) {
       return reply
@@ -164,9 +164,9 @@ export function registerAdminAuthRoutes(
     if (!email || !otp) {
       return reply.code(400).send({ message: 'Email and OTP are required.' });
     }
-    if (!isGmailAddress(email)) {
+    if (!isValidEmail(email)) {
       return reply.code(400).send({
-        message: 'OTP verification requires a valid @gmail.com address.',
+        message: 'Please enter a valid email address.',
       });
     }
 

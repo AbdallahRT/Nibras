@@ -74,6 +74,34 @@ test('canManageCourseDiscussions allows instructor or TA on course only', () => 
   assert.equal(canManageCourseDiscussions(studentAuth, 'c1'), false);
 });
 
+test('canAcceptPost allows thread author and course managers', () => {
+  const {
+    canAcceptPost,
+  } = require('../apps/api/dist/features/community/access');
+  const threadAuthorAuth = {
+    user: { id: 't1', systemRole: 'user', username: 'author' },
+    memberships: [],
+    authKind: 'web',
+    token: 't',
+  };
+  const instructorAuth = {
+    user: { id: 'i1', systemRole: 'user', username: 'prof' },
+    memberships: [{ courseId: 'c1', role: 'instructor', level: 1 }],
+    authKind: 'web',
+    token: 't',
+  };
+  const studentAuth = {
+    user: { id: 's1', systemRole: 'user', username: 'stu' },
+    memberships: [{ courseId: 'c1', role: 'student', level: 1 }],
+    authKind: 'web',
+    token: 't',
+  };
+  assert.equal(canAcceptPost(threadAuthorAuth, 't1', 'c1'), true);
+  assert.equal(canAcceptPost(threadAuthorAuth, 'other', 'c1'), false);
+  assert.equal(canAcceptPost(instructorAuth, 'other', 'c1'), true);
+  assert.equal(canAcceptPost(studentAuth, 'other', 'c1'), false);
+});
+
 test('presentThreadAdmin includes moderation and course fields', () => {
   const now = new Date('2026-01-01T00:00:00Z');
   const presented = presentThreadAdmin(

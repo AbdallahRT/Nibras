@@ -163,79 +163,79 @@ window.NibrasReact.run(() => {
 
   const threadService = services.threadService || {
     getById: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}`, {
+      requestCommunity(`/v1/community/threads/${threadId}`, {
         method: 'GET',
         auth: true,
       }),
     pin: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}/pin`, {
+      requestCommunity(`/v1/community/threads/${threadId}/pin`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     unpin: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}/unpin`, {
+      requestCommunity(`/v1/community/threads/${threadId}/unpin`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     close: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}/close`, {
+      requestCommunity(`/v1/community/threads/${threadId}/close`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     open: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}/open`, {
+      requestCommunity(`/v1/community/threads/${threadId}/open`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     delete: (threadId) =>
-      requestCommunity(`/community/threads/${threadId}`, {
+      requestCommunity(`/v1/community/threads/${threadId}`, {
         method: 'DELETE',
         auth: true,
       }),
   };
   const postService = services.postService || {
     listByThread: (threadId) =>
-      requestCommunity(`/community/posts/thread/${threadId}`, {
+      requestCommunity(`/v1/community/posts/thread/${threadId}`, {
         method: 'GET',
         auth: true,
       }),
     create: (threadId, data) =>
-      requestCommunity(`/community/posts/${threadId}`, {
+      requestCommunity(`/v1/community/posts/${threadId}`, {
         method: 'POST',
         auth: true,
         body: data,
       }),
     pin: (postId) =>
-      requestCommunity(`/community/posts/${postId}/pin`, {
+      requestCommunity(`/v1/community/posts/${postId}/pin`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     accept: (postId) =>
-      requestCommunity(`/community/posts/${postId}/accept`, {
+      requestCommunity(`/v1/community/posts/${postId}/accept`, {
         method: 'PATCH',
         auth: true,
         body: {},
       }),
     delete: (postId) =>
-      requestCommunity(`/community/posts/${postId}`, {
+      requestCommunity(`/v1/community/posts/${postId}`, {
         method: 'DELETE',
         auth: true,
       }),
   };
   const communityVoteService = services.communityVoteService || {
     cast: (data) =>
-      requestCommunity('/community/votes', {
+      requestCommunity('/v1/community/votes', {
         method: 'POST',
         auth: true,
         body: data,
       }),
     getMyVote: ({ targetType, targetId }) =>
-      requestCommunity(`/community/votes/${targetType}/${targetId}`, {
+      requestCommunity(`/v1/community/votes/${targetType}/${targetId}`, {
         method: 'GET',
         auth: true,
       }),
@@ -265,9 +265,8 @@ window.NibrasReact.run(() => {
     posts: [],
     currentUser: null,
     votesByTargetId: new Map(),
-    socket: null,
-    typingTimer: null,
-    typingUsers: {},
+    pollTimer: null,
+    isPolling: false,
   };
 
   if (!state.threadId) {
@@ -411,9 +410,7 @@ window.NibrasReact.run(() => {
     if (!state.currentUser) return;
     await loadThreadAndPosts();
     configureBackLink();
-    initSocket();
-    setupTypingListeners();
-    setInterval(updateTypingIndicator, 2000);
+    startPolling();
   }
 
   async function loadCurrentUser() {
@@ -746,67 +743,31 @@ window.NibrasReact.run(() => {
       : fallbackPath;
   }
 
-  function initSocket() {
-    if (typeof window.io !== 'function') return;
-    const baseUrl = resolveSocketBaseUrl();
-    state.socket = window.io(baseUrl, {
-      transports: ['websocket', 'polling'],
-    });
-    state.socket.on('connect', () => {
-      state.socket.emit('thread:join', state.threadId);
-    });
-    state.socket.on('post:created', (payload) => {
-      const incomingThreadId = normalizeIdentifier(payload?.threadId);
-      if (!incomingThreadId || incomingThreadId !== state.threadId) return;
-      if (
-        !state.posts ||
-        state.posts.some(
-          (post) => getId(post) === normalizeIdentifier(payload?.id),
-        )
-      )
-        return;
-      const hydratedPost = Object.assign({}, payload, {
-        _id: payload?.id,
-        author: payload?.author || {},
-      });
-      state.posts.push(hydratedPost);
-      state.thread = Object.assign({}, state.thread, {
-        postsCount: Number(state.thread?.postsCount || 0) + 1,
-      });
-      state.votesByTargetId.set(normalizeIdentifier(payload?.id), 0);
-      renderThread();
-      renderPosts();
-    });
-    state.socket.on('vote:updated', (payload) => {
-      const targetId = normalizeIdentifier(payload?.targetId);
-      const targetType = String(payload?.targetType || '').toLowerCase();
-      const votesCount = Number(payload?.votesCount || 0);
-      if (!targetId || !targetType) return;
-      if (targetType === 'thread' && targetId === state.threadId) {
-        state.thread = Object.assign({}, state.thread, { votesCount });
-        renderThread();
-        return;
+  function startPolling() {
+    if (state.pollTimer) {
+      window.clearInterval(state.pollTimer);
+    }
+    state.pollTimer = window.setInterval(async () => {
+      if (!state.threadId || state.isPolling) return;
+      state.isPolling = true;
+      try {
+        const previousPostCount = state.posts?.length || 0;
+        const threadPayload = await threadService.getById(state.threadId);
+        state.thread = pickEntity(threadPayload, 'thread') || state.thread;
+        await reloadPosts();
+        if ((state.posts?.length || 0) !== previousPostCount) {
+          await hydrateVotes();
+          renderThread();
+          renderPosts();
+        }
+      } catch (_) {
+        // ignore transient polling errors
+      } finally {
+        state.isPolling = false;
       }
-      if (targetType === 'post') {
-        state.posts = state.posts.map((post) =>
-          getId(post) === targetId
-            ? Object.assign({}, post, { votesCount })
-            : post,
-        );
-        renderPosts();
-      }
-    });
-    state.socket.on('typing:update', (payload) => {
-      if (!payload || payload.userId === getCurrentUserId()) return;
-      if (normalizeIdentifier(payload.threadId) !== state.threadId) return;
-      state.typingUsers[payload.userId] = {
-        name: payload.name || 'Someone',
-        timestamp: Date.now(),
-      };
-      updateTypingIndicator();
-    });
+    }, 8000);
     window.addEventListener('beforeunload', () => {
-      if (state.socket) state.socket.disconnect();
+      if (state.pollTimer) window.clearInterval(state.pollTimer);
     });
   }
 
@@ -814,72 +775,6 @@ window.NibrasReact.run(() => {
     return normalizeIdentifier(
       state.currentUser?._id || state.currentUser?.id || '',
     );
-  }
-
-  function setupTypingListeners() {
-    if (!elements.replyInput) return;
-    elements.replyInput.addEventListener('input', function () {
-      if (!state.socket || !state.threadId) return;
-      state.socket.emit('typing:start', {
-        threadId: state.threadId,
-        userId: getCurrentUserId(),
-        name: state.currentUser?.name || 'Someone',
-      });
-      if (state.typingTimer) clearTimeout(state.typingTimer);
-      state.typingTimer = setTimeout(stopTyping, 2000);
-    });
-    elements.replyInput.addEventListener('blur', stopTyping);
-  }
-
-  function stopTyping() {
-    if (state.typingTimer) {
-      clearTimeout(state.typingTimer);
-      state.typingTimer = null;
-    }
-    if (state.socket && state.threadId) {
-      state.socket.emit('typing:stop', {
-        threadId: state.threadId,
-        userId: getCurrentUserId(),
-      });
-    }
-  }
-
-  function updateTypingIndicator() {
-    var indicator = document.getElementById('typing-indicator');
-    if (!indicator) return;
-    var now = Date.now();
-    var active = [];
-    for (var id in state.typingUsers) {
-      if (now - state.typingUsers[id].timestamp > 3000) {
-        delete state.typingUsers[id];
-      } else {
-        active.push(state.typingUsers[id].name);
-      }
-    }
-    if (active.length === 0) {
-      indicator.classList.remove('active');
-      indicator.textContent = '';
-      return;
-    }
-    var text =
-      active.length === 1
-        ? active[0] +
-          ' is typing<span class="dots"><span>.</span><span>.</span><span>.</span></span>'
-        : active.length === 2
-          ? active[0] +
-            ' and ' +
-            active[1] +
-            ' are typing<span class="dots"><span>.</span><span>.</span><span>.</span></span>'
-          : 'Multiple people are typing<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
-    indicator.innerHTML = text;
-    indicator.classList.add('active');
-    clearTimeout(indicator._hideTimer);
-    indicator._hideTimer = setTimeout(function () {
-      indicator.classList.remove('active');
-      setTimeout(function () {
-        if (indicator.innerHTML === text) indicator.innerHTML = '';
-      }, 200);
-    }, 3000);
   }
 
   function showErrorNotice(error, fallbackMessage) {

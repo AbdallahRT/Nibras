@@ -814,6 +814,10 @@ window.NibrasReact.run(function () {
     }
   }
 
+  showFeedback(
+    'Teams are created from internal contest pages. Select a contest below to form a contest-scoped team.',
+    'info',
+  );
   loadMyTeams();
   loadDiscover();
   loadInvitations();

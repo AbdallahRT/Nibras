@@ -55,8 +55,18 @@ async function initCourses() {
       }
     } catch (_) {}
     if (!levelFetched) {
-      window.location.replace('../Levels/level.html');
-      return;
+      var isLocalHost = ['localhost', '127.0.0.1'].includes(
+        window.location.hostname,
+      );
+      if (isLocalHost || window.NIBRAS_PREFER_LOCAL_TRACKING_FALLBACK) {
+        levelFromStorage = 'Beginner';
+        var mergedDefault = storedUser || {};
+        mergedDefault.selectedLevel = 'Beginner';
+        localStorage.setItem('user', JSON.stringify(mergedDefault));
+      } else {
+        window.location.replace('../Levels/level.html');
+        return;
+      }
     }
   }
 
@@ -284,10 +294,8 @@ async function initCourses() {
       if (!Array.isArray(adminCourses) || !adminCourses.length) return;
 
       var mappedCourses = adminCourses.filter(function (c) {
-        return (
-          (c.adminCourseId || c.backendCourseId || c.remoteCourseId) &&
-          c.level === levelFilter
-        );
+        if (c.type === 'practice_lab') return true;
+        return c.level === levelFilter;
       });
 
       var coursesService = window.NibrasServices?.coursesService;
