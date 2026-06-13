@@ -2527,6 +2527,7 @@
       };
     },
 
+    // Legacy/internal only: registers on NestJS Mongo contests, not synced Fastify contests.
     async joinContest(id) {
       const contestId = encodeURIComponent(String(id || ''));
       const payload = await requestInternalContest(

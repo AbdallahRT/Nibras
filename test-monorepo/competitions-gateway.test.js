@@ -53,6 +53,46 @@ test('competitions active filter route responds', async (t) => {
   }
 });
 
+test('competitions codechef host filter route responds', async (t) => {
+  if (!process.env.DATABASE_URL) {
+    t.skip('DATABASE_URL not set');
+    return;
+  }
+
+  const prisma = getSharedPrisma();
+  const app = buildApp(new PrismaStore(prisma));
+  try {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/contests?host=codechef&limit=5',
+    });
+    assert.equal(response.statusCode, 200);
+    assert.ok(Array.isArray(response.json()));
+  } finally {
+    await app.close();
+  }
+});
+
+test('competitions ctftime host filter route responds', async (t) => {
+  if (!process.env.DATABASE_URL) {
+    t.skip('DATABASE_URL not set');
+    return;
+  }
+
+  const prisma = getSharedPrisma();
+  const app = buildApp(new PrismaStore(prisma));
+  try {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/contests?host=ctftime&limit=5',
+    });
+    assert.equal(response.statusCode, 200);
+    assert.ok(Array.isArray(response.json()));
+  } finally {
+    await app.close();
+  }
+});
+
 test('competitions ranking route requires auth', async (t) => {
   if (!process.env.DATABASE_URL) {
     t.skip('DATABASE_URL not set');

@@ -113,6 +113,8 @@
                 <button class="filter-chip" data-platform="codeforces">CODEFORCES</button>
                 <button class="filter-chip" data-platform="leetcode">LEETCODE</button>
                 <button class="filter-chip" data-platform="atcoder">ATCODER</button>
+                <button class="filter-chip" data-platform="codechef">CODECHEF</button>
+                <button class="filter-chip" data-platform="ctftime">CTFTIME</button>
             </div>
 
             <!-- Calendar View -->
@@ -187,12 +189,8 @@
     </main>
 
         <script src="../../react-page-utils.js"></script>
-    <script>
-        if (window.NibrasShared?.session?.updateUserInfoDisplay) {
-            window.NibrasShared.session.updateUserInfoDisplay();
-        }
-    </script>
     <script src="../../react-bootstrap.js"></script>
+    <script src="./contest-join.js"></script>
     <script src="./contest.js"></script>
     <script src="../../services/gamification-ui.js"></script>
     <script>

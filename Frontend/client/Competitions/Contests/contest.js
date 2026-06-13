@@ -10,6 +10,8 @@
       }
     })(() => {
   const shared = window.NibrasShared || {};
+  const getJoinUrl = window.ContestJoin?.getJoinUrl || (() => '');
+  shared.session?.updateUserInfoDisplay?.();
   const uiStates = shared.uiStates;
   const competitionsService = window.NibrasServices?.competitionsService;
   const token = (() => {
@@ -116,6 +118,24 @@
     return contests.filter(
       (c) => (c.platform || '').toLowerCase() === platform.toLowerCase(),
     );
+  };
+
+  const platformFilterLabel = (platform) => {
+    if (!platform || platform === 'all') return '';
+    return platform.toUpperCase();
+  };
+
+  const platformFilteredEmptyMessage = (scope, platform) => {
+    const label = platformFilterLabel(platform);
+    if (!label) return `No ${scope} contests right now.`;
+    return `No ${scope} ${label} contests right now.`;
+  };
+
+  const clearContestContainers = () => {
+    if (liveContainer) liveContainer.innerHTML = '';
+    if (upcomingContainer) upcomingContainer.innerHTML = '';
+    if (bookmarksContainer) bookmarksContainer.innerHTML = '';
+    if (remindersContainer) remindersContainer.innerHTML = '';
   };
 
   const formatDateTime = (isoValue) => {
@@ -292,13 +312,17 @@
       selectedPlatform,
     );
     if (!filtered.length) {
+      const message = platformFilteredEmptyMessage(
+        'running',
+        selectedPlatform,
+      );
       if (uiStates?.render) {
         uiStates.render(liveContainer, {
           state: 'empty',
-          message: 'No running contests right now.',
+          message,
         });
       } else {
-        liveContainer.innerHTML = '<p>No running contests right now.</p>';
+        liveContainer.innerHTML = `<p>${message}</p>`;
       }
       return;
     }
@@ -339,13 +363,17 @@
       selectedPlatform,
     );
     if (!filtered.length) {
+      const message = platformFilteredEmptyMessage(
+        'upcoming',
+        selectedPlatform,
+      );
       if (uiStates?.render) {
         uiStates.render(upcomingContainer, {
           state: 'empty',
-          message: 'No upcoming contests available.',
+          message,
         });
       } else {
-        upcomingContainer.innerHTML = '<p>No upcoming contests available.</p>';
+        upcomingContainer.innerHTML = `<p>${message}</p>`;
       }
       return;
     }
@@ -846,26 +874,25 @@
   };
 
   const findContestById = (id) => {
-    const all = runningContests.concat(upcomingContests);
+    const all = runningContests
+      .concat(upcomingContests)
+      .concat(bookmarkedContests)
+      .concat(reminderContests);
     return all.find((entry) => (entry._id || entry.id) === id) || null;
   };
 
-  function getJoinUrl(contest) {
-    if (!contest) return '';
-    var url = contest.joinUrl;
-    if (!url && contest.contestIdOnPlatform) {
-      var p = (contest.platform || '').toLowerCase();
-      if (p === 'codeforces')
-        url =
-          'https://codeforces.com/contestRegistration/' +
-          contest.contestIdOnPlatform;
-      else if (p === 'leetcode')
-        url = 'https://leetcode.com/contest/' + contest.contestIdOnPlatform;
-      else if (p === 'atcoder')
-        url = 'https://atcoder.jp/contests/' + contest.contestIdOnPlatform;
-    }
-    return url || '';
-  }
+  const openJoinUrl = (url) => {
+    const target = String(url || '').trim();
+    if (!target) return false;
+    const link = document.createElement('a');
+    link.href = target;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return true;
+  };
 
   const ensureAuth = () => {
     if (!authEnabled) {
@@ -903,12 +930,19 @@
       return;
     }
 
+    if (action === 'join') {
+      const joinUrl = getJoinUrl(contest);
+      if (openJoinUrl(joinUrl)) return;
+      showFeedback(
+        'No registration link available for this contest.',
+        'info',
+      );
+      return;
+    }
+
     if (!ensureAuth()) return;
     try {
-      if (action === 'join') {
-        await competitionsService.joinContest(contestId);
-        showFeedback('Contest joined successfully.', 'info');
-      } else if (action === 'bookmark') {
+      if (action === 'bookmark') {
         if (bookmarkedContestIds.has(contestId)) {
           await competitionsService.removeBookmark(contestId);
           bookmarkedContestIds.delete(contestId);
@@ -997,8 +1031,7 @@
         'Competitions service is unavailable on this page.',
         'error',
       );
-      if (liveContainer) liveContainer.innerHTML = '';
-      if (upcomingContainer) upcomingContainer.innerHTML = '';
+      clearContestContainers();
       if (bookmarksContainer) {
         bookmarksContainer.innerHTML =
           '<p>Competitions service is unavailable.</p>';
@@ -1009,6 +1042,8 @@
       }
       return;
     }
+
+    clearContestContainers();
 
     if (uiStates?.render) {
       uiStates.render(liveContainer, {
@@ -1174,17 +1209,11 @@
 
     if (action === 'join') {
       var url = button.dataset.url;
-      if (url) {
-        console.log('[Join] Opening:', url);
-        var link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        return;
+      if (!url) {
+        var contest = findContestById(id);
+        url = getJoinUrl(contest);
       }
+      if (openJoinUrl(url)) return;
     }
 
     handleContestAction(action, id);

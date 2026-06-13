@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Set Railway variables for api, worker, and web gateway from railway/env.local.
 # Usage: ./scripts/railway-secrets.sh
+#
+# Redis: set REDIS_URL in railway/env.local, or leave unset to wire
+#   REDIS_URL=${{Redis.REDIS_URL}} (requires: ./scripts/railway-provision-redis.sh)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,6 +32,7 @@ fi
 
 FASTIFY_ORIGIN="${RAILWAY_FASTIFY_ORIGIN:-https://api-production-bd99.up.railway.app}"
 NESTJS_ORIGIN="${NIBRAS_NESTJS_ORIGIN:-https://nibras-backend.up.railway.app}"
+USE_RAILWAY_REDIS="${USE_RAILWAY_REDIS:-true}"
 
 API_VARS=(
   "RAILWAY_DOCKERFILE_PATH=Dockerfile.api"
@@ -68,9 +72,13 @@ fi
 if [[ -n "${REDIS_URL:-}" ]]; then
   API_VARS+=("REDIS_URL=${REDIS_URL}")
   WORKER_VARS+=("REDIS_URL=${REDIS_URL}")
+elif [[ "${USE_RAILWAY_REDIS}" == "true" ]]; then
+  API_VARS+=('REDIS_URL=${{Redis.REDIS_URL}}')
+  WORKER_VARS+=('REDIS_URL=${{Redis.REDIS_URL}}')
+  echo "Wiring REDIS_URL=\${{Redis.REDIS_URL}} (run ./scripts/railway-provision-redis.sh if Redis is missing)"
 else
   echo "WARNING: REDIS_URL not set — worker BullMQ contest sync will not run." >&2
-  echo "  Add REDIS_URL to ${ENV_FILE} (Railway Redis or Upstash)." >&2
+  echo "  Add REDIS_URL to ${ENV_FILE} or set USE_RAILWAY_REDIS=true." >&2
 fi
 
 if [[ -n "${COMPETITIONS_STARTUP_SYNC:-}" ]]; then
