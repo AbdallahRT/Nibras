@@ -3,7 +3,7 @@
 # Usage: BASE=https://nibras-api.fly.dev npm run smoke:api-prod
 set -euo pipefail
 
-BASE="${BASE:-https://nibras-api.fly.dev}"
+BASE="${BASE:-https://web-production-f3a04.up.railway.app}"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'

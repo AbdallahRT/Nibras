@@ -42,6 +42,7 @@
     "smoke:local": "bash scripts/full-system-smoke.sh",
     "smoke:gateway": "bash scripts/gateway-smoke.sh",
     "smoke:api-prod": "bash scripts/api-smoke-prod.sh",
+    "deploy:railway": "bash scripts/railway-deploy.sh",
     "smoke:socket": "node scripts/socket-contest-listen.mjs",
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push",

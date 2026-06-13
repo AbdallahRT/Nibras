@@ -40,9 +40,8 @@
   })();
 
   const LOCAL_GATEWAY = 'http://localhost:8080';
-  const DEFAULT_GATEWAY = isLocalHost
-    ? LOCAL_GATEWAY
-    : 'https://nibras-api.fly.dev';
+  const PRODUCTION_API = 'https://web-production-f3a04.up.railway.app';
+  const DEFAULT_GATEWAY = isLocalHost ? LOCAL_GATEWAY : PRODUCTION_API;
   let productionGateway = DEFAULT_GATEWAY;
   try {
     if (!isLocalHost && window.location.hostname.includes('vercel.app')) {
@@ -55,9 +54,7 @@
   const DEFAULT_ADMIN_API = DEFAULT_MONOLITH_API;
   const DEFAULT_LEGACY_API = isLocalHost ? LOCAL_GATEWAY : productionGateway;
   const DEFAULT_COMMUNITY_API = isLocalHost ? LOCAL_GATEWAY : productionGateway;
-  var DEFAULT_TRACKING_API = isLocalHost
-    ? LOCAL_GATEWAY
-    : 'https://nibras-api.fly.dev';
+  var DEFAULT_TRACKING_API = isLocalHost ? LOCAL_GATEWAY : PRODUCTION_API;
   try {
     if (window.location.hostname.includes('vercel.app'))
       DEFAULT_TRACKING_API = window.location.origin;
