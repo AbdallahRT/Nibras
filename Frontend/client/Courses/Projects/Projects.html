@@ -990,7 +990,7 @@
             var _u = JSON.parse(localStorage.getItem('user') || '{}');
             var _r = String(_u?.role?.name || _u?.role || '').toLowerCase();
             if (_r === 'instructor') {
-                var hideTexts = ['CLI', 'Competitions', 'Achievements', 'AI Tutor', 'Study Rooms'];
+                var hideTexts = ['CLI', 'Competitions', 'Achievements', 'AI Tutor'];
                 document.querySelectorAll('.nav-link').forEach(function(link) {
                     if (hideTexts.some(function(t) { return link.textContent.trim().includes(t); })) {
                         var item = link.closest('.nav-item');

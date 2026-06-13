@@ -10,7 +10,6 @@ The following integrations from Phase 11 are **deferred** after the Fastify-firs
 | Moodle             | Not started | REST API enrollment and activity sync            |
 | Slack              | Not started | OAuth app, slash commands, webhook notifications |
 | Discord            | Not started | Bot + channel webhooks                           |
-| WebRTC study rooms | Not started | Real-time rooms outside current scope            |
 | GitLab webhooks    | Stub only   | `POST /v1/webhooks/gitlab` returns 501           |
 
 ## Implemented (MVP)

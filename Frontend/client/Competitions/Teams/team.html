@@ -37,7 +37,6 @@
             <li class="nav-item"><a href="../../Analytics/Overview/overview.html" class="nav-link"><i class="fa-solid fa-chart-simple"></i> Analytics</a></li>
             <li class="nav-item"><a href="../../Settings/settings.html" class="nav-link"><i class="fa-solid fa-gear"></i> Settings</a></li>
             <li class="nav-item"><a href="../../Integrations/integrations.html" class="nav-link"><i class="fa-solid fa-plug"></i> Integrations</a></li>
-            <li class="nav-item"><a href="../../StudyRooms/rooms.html" class="nav-link"><i class="fa-solid fa-video"></i> Study Rooms</a></li>
         </ul>
         <div class="user-profile">
             <div class="avatar-circle"></div>
@@ -242,7 +241,7 @@
             var _u = JSON.parse(localStorage.getItem('user') || '{}');
             var _r = String(_u?.role?.name || _u?.role || '').toLowerCase();
             if (_r === 'instructor') {
-                var hideTexts = ['CLI', 'Competitions', 'Achievements', 'AI Tutor', 'Study Rooms'];
+                var hideTexts = ['CLI', 'Competitions', 'Achievements', 'AI Tutor'];
                 document.querySelectorAll('.nav-link').forEach(function(link) {
                     if (hideTexts.some(function(t) { return link.textContent.trim().includes(t); })) {
                         var item = link.closest('.nav-item');

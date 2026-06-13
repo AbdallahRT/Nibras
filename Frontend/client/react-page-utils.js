@@ -1814,11 +1814,6 @@
         url: 'Integrations/integrations.html',
       },
       {
-        keywords: ['study rooms', 'rooms', 'study', 'collaborate'],
-        url: 'StudyRooms/rooms.html',
-      },
-      { keywords: ['study room', 'room detail'], url: 'StudyRooms/room.html' },
-      {
         keywords: ['recommendation system', 'recommendations', 'suggestions'],
         url: 'Recommendation System/recommendation.html',
       },
