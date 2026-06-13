@@ -934,6 +934,31 @@
         auth: false,
       });
     },
+
+    async listBookmarks() {
+      return apiFetch('/v1/community/bookmarks', {
+        service: 'legacyCommunity',
+        method: 'GET',
+        auth: true,
+      });
+    },
+
+    async bookmark(id) {
+      return apiFetch(`/v1/community/questions/${encodeURIComponent(String(id || ''))}/bookmark`, {
+        service: 'legacyCommunity',
+        method: 'POST',
+        auth: true,
+        body: {},
+      });
+    },
+
+    async removeBookmark(id) {
+      return apiFetch(`/v1/community/questions/${encodeURIComponent(String(id || ''))}/bookmark`, {
+        service: 'legacyCommunity',
+        method: 'DELETE',
+        auth: true,
+      });
+    },
   };
 
   // ============================================================

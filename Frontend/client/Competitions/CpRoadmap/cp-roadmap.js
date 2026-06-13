@@ -23,9 +23,7 @@ window.NibrasReact.run(() => {
       depth,
     });
     const children = node.children || node.topics || node.subtopics || [];
-    if (Array.isArray(children)) {
-      children.forEach((child) => flattenTopics(child, depth + 1, acc));
-    }
+    if (Array.isArray(children)) children.forEach((child) => flattenTopics(child, depth + 1, acc));
     return acc;
   }
 
@@ -43,10 +41,7 @@ window.NibrasReact.run(() => {
       const solved = Number(stats.solved || stats.solvedCount || 0);
       const total = Number(stats.total || stats.problemCount || 0);
       const pct = total > 0 ? Math.round((solved / total) * 100) : 0;
-      statsEl.innerHTML = `
-        <strong>${solved} / ${total || '—'} problems solved</strong>
-        <div class="progress-bar"><span style="width:${pct}%"></span></div>
-      `;
+      statsEl.innerHTML = `<strong>${solved} / ${total || '—'} problems solved</strong><div class="progress-bar"><span style="width:${pct}%"></span></div>`;
       const topics = flattenTopics(roadmap.categories || roadmap.topics || roadmap);
       if (!topics.length) {
         listEl.innerHTML = '<div class="feature-card">No roadmap topics available.</div>';
@@ -54,14 +49,8 @@ window.NibrasReact.run(() => {
       }
       listEl.innerHTML = topics
         .map((topic) => {
-          const progress =
-            topic.total > 0
-              ? `${topic.solved}/${topic.total}`
-              : `${topic.solved}`;
-          return `<article class="feature-card" style="margin-left:${topic.depth * 16}px">
-            <strong>${esc(topic.title)}</strong>
-            <span class="status-pill">${esc(progress)}</span>
-          </article>`;
+          const progress = topic.total > 0 ? `${topic.solved}/${topic.total}` : `${topic.solved}`;
+          return `<article class="feature-card" style="margin-left:${topic.depth * 16}px"><strong>${esc(topic.title)}</strong><span class="status-pill">${esc(progress)}</span></article>`;
         })
         .join('');
     } catch (error) {

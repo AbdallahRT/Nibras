@@ -27,14 +27,7 @@ window.NibrasReact.run(() => {
     const platform = problem.platform || payload.platform || 'platform';
     const url = problem.url || '#';
     const status = payload.status || payload.assignment?.status || 'pending';
-    cardEl.innerHTML = `
-      <h2 style="margin:0 0 8px;">${esc(title)}</h2>
-      <div><span class="status-pill">${esc(platform)}</span>
-        <span class="status-pill">${esc(status)}</span></div>
-      <div class="feature-actions">
-        <a href="${esc(url)}" target="_blank" rel="noopener" class="tab-btn" style="display:inline-block;">Open Problem</a>
-      </div>
-    `;
+    cardEl.innerHTML = `<h2 style="margin:0 0 8px;">${esc(title)}</h2><div><span class="status-pill">${esc(platform)}</span><span class="status-pill">${esc(status)}</span></div><div class="feature-actions"><a href="${esc(url)}" target="_blank" rel="noopener" class="tab-btn" style="display:inline-block;">Open Problem</a></div>`;
   }
 
   async function load() {
@@ -43,8 +36,7 @@ window.NibrasReact.run(() => {
       return;
     }
     try {
-      const payload = await service.getDailyProblemToday();
-      renderAssignment(payload);
+      renderAssignment(await service.getDailyProblemToday());
     } catch (error) {
       cardEl.textContent = error.message || 'Failed to load daily problem.';
     }

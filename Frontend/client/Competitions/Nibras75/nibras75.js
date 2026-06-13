@@ -24,10 +24,7 @@ window.NibrasReact.run(() => {
       const solved = Number(stats.solved || stats.solvedCount || 0);
       const total = Number(stats.total || stats.totalCount || 75);
       const pct = total > 0 ? Math.round((solved / total) * 100) : 0;
-      statsEl.innerHTML = `
-        <strong>${solved} / ${total} solved</strong>
-        <div class="progress-bar"><span style="width:${pct}%"></span></div>
-      `;
+      statsEl.innerHTML = `<strong>${solved} / ${total} solved</strong><div class="progress-bar"><span style="width:${pct}%"></span></div>`;
       const problems = Array.isArray(problemsPayload?.problems)
         ? problemsPayload.problems
         : Array.isArray(problemsPayload)
@@ -41,16 +38,7 @@ window.NibrasReact.run(() => {
         .map((problem) => {
           const status = problem.solved || problem.isSolved ? 'Solved' : 'Unsolved';
           const url = problem.url || '#';
-          return `<article class="feature-card">
-            <div><strong>${esc(problem.title || problem.name || 'Problem')}</strong>
-              <span class="status-pill">${esc(status)}</span></div>
-            <div style="margin-top:8px;color:var(--text-secondary,#6b7280);">
-              ${esc((problem.tags || []).join(', '))}
-            </div>
-            <div class="feature-actions">
-              <a href="${esc(url)}" target="_blank" rel="noopener" class="tab-btn" style="display:inline-block;">Open</a>
-            </div>
-          </article>`;
+          return `<article class="feature-card"><div><strong>${esc(problem.title || problem.name || 'Problem')}</strong><span class="status-pill">${esc(status)}</span></div><div style="margin-top:8px;color:var(--text-secondary,#6b7280);">${esc((problem.tags || []).join(', '))}</div><div class="feature-actions"><a href="${esc(url)}" target="_blank" rel="noopener" class="tab-btn" style="display:inline-block;">Open</a></div></article>`;
         })
         .join('');
     } catch (error) {

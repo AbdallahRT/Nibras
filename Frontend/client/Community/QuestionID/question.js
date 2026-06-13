@@ -19,6 +19,7 @@ window.NibrasReact.run(() => {
   let currentQuestionId = null;
   let currentUserId = null;
   let currentUserRole = null;
+  let questionBookmarked = false;
   const AI_TUTOR_MARKER = '<!--NIBRAS_AI_TUTOR-->';
   const AI_PUBLISHED_QUESTIONS_KEY = 'nibras_ai_published_questions_v1';
 
@@ -736,6 +737,7 @@ window.NibrasReact.run(() => {
       };
 
       renderDetailView(currentQuestionData);
+      refreshBookmarkState(questionId);
       loadRoutingInfo(questionId);
       if (!socket) {
         ensureSocketIoLoaded().then((isSocketReady) => {
@@ -751,6 +753,92 @@ window.NibrasReact.run(() => {
         'Failed to load question. Please try again.',
       );
       showError(stateInfo.message, stateInfo.state);
+    }
+  }
+
+  async function refreshBookmarkState(questionId) {
+    const token = sharedAuth?.getToken?.() || localStorage.getItem('token');
+    if (!token || !questionId) {
+      questionBookmarked = false;
+      updateBookmarkButton();
+      return;
+    }
+    const questionSvc = window.NibrasServices?.questionService;
+    try {
+      if (questionSvc?.listBookmarks) {
+        const data = await questionSvc.listBookmarks();
+        const ids = Array.isArray(data?.questionIds) ? data.questionIds : [];
+        questionBookmarked = ids.includes(String(questionId));
+      } else {
+        const data = await requestLegacyApi('/v1/community/bookmarks', {
+          auth: true,
+        });
+        const ids = Array.isArray(data?.questionIds) ? data.questionIds : [];
+        questionBookmarked = ids.includes(String(questionId));
+      }
+    } catch (error) {
+      console.warn('Could not load bookmark state:', error);
+      questionBookmarked = false;
+    }
+    updateBookmarkButton();
+  }
+
+  function updateBookmarkButton() {
+    const btn = document.querySelector('.bookmark-q-btn');
+    if (!btn) return;
+    const iconClass = questionBookmarked ? 'fa-solid' : 'fa-regular';
+    btn.className = `${iconClass} fa-bookmark bookmark-q-btn`;
+    btn.setAttribute('aria-pressed', questionBookmarked ? 'true' : 'false');
+    btn.title = questionBookmarked ? 'Remove bookmark' : 'Bookmark this question';
+    btn.setAttribute(
+      'aria-label',
+      questionBookmarked ? 'Remove bookmark' : 'Bookmark this question',
+    );
+    btn.style.color = questionBookmarked
+      ? 'var(--accent-blue)'
+      : 'var(--text-secondary)';
+  }
+
+  async function toggleQuestionBookmark() {
+    const token = sharedAuth?.getToken?.() || localStorage.getItem('token');
+    if (!token) {
+      showToast('Sign in to bookmark questions.', 'error');
+      return;
+    }
+    if (!currentQuestionId) return;
+
+    const questionSvc = window.NibrasServices?.questionService;
+    const wasBookmarked = questionBookmarked;
+    questionBookmarked = !wasBookmarked;
+    updateBookmarkButton();
+
+    try {
+      if (wasBookmarked) {
+        if (questionSvc?.removeBookmark) {
+          await questionSvc.removeBookmark(currentQuestionId);
+        } else {
+          await requestLegacyApi(
+            `/v1/community/questions/${encodeURIComponent(currentQuestionId)}/bookmark`,
+            { method: 'DELETE', auth: true },
+          );
+        }
+        showToast('Bookmark removed.');
+      } else {
+        if (questionSvc?.bookmark) {
+          await questionSvc.bookmark(currentQuestionId);
+        } else {
+          await requestLegacyApi(
+            `/v1/community/questions/${encodeURIComponent(currentQuestionId)}/bookmark`,
+            { method: 'POST', auth: true, body: {} },
+          );
+        }
+        showToast('Question bookmarked.');
+      }
+    } catch (error) {
+      questionBookmarked = wasBookmarked;
+      updateBookmarkButton();
+      console.error('Bookmark error:', error);
+      showToast(error.message || 'Failed to update bookmark.', 'error');
     }
   }
 
@@ -819,6 +907,7 @@ window.NibrasReact.run(() => {
                         <span>Asked ${q.time}</span>
                         <span style="margin: 0 -4px;">•</span>
                         <span>${q.views} views</span>
+                        <button type="button" class="fa-regular fa-bookmark bookmark-q-btn" title="Bookmark this question" aria-label="Bookmark this question" aria-pressed="false" style="background:none; border:none; cursor: pointer; font-size: 1.1rem; color: var(--text-secondary); transition: 0.2s;"></button>
                         <button type="button" class="fa-solid fa-share-nodes share-q-btn" title="Copy link" aria-label="Copy question link" style="background:none; border:none; cursor: pointer; font-size: 1.15rem; color: var(--accent-blue); transition: 0.2s;"></button>
                         <button type="button" class="fa-regular fa-flag report-btn" data-target-id="${q.id}" data-target-type="question" title="Report this question" aria-label="Report this question" style="background:none; border:none; cursor: pointer; font-size: 1.1rem; color: var(--text-secondary); transition: 0.2s;"></button>
                         ${actionMenuHtml}
@@ -1013,6 +1102,12 @@ window.NibrasReact.run(() => {
         .writeText(shareUrl.toString())
         .then(() => showToast('Link copied to clipboard!'))
         .catch(() => showToast('Unable to copy link right now.', 'error'));
+      return;
+    }
+
+    const bookmarkButton = e.target.closest('.bookmark-q-btn');
+    if (bookmarkButton) {
+      await toggleQuestionBookmark();
       return;
     }
 
