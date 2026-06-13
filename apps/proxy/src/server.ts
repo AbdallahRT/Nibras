@@ -223,7 +223,7 @@ function serveStaticFile(
   const headers: Record<string, string> = {
     'content-type': MIME_TYPES[ext] || 'application/octet-stream',
   };
-  if (ext === '.js') {
+  if (ext === '.js' || ext === '.html') {
     headers['cache-control'] = 'no-cache';
   }
   response.writeHead(200, headers);

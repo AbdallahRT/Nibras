@@ -135,8 +135,21 @@
     <script src="../../react-bootstrap.js"></script>
     <script src="../config.js"></script>
     <script src="../services/api.js"></script>
-    <script src="./courseData.js?v=20260613"></script>
-    <script src="./courses.js?v=20260613"></script>
+    <script src="./courseData.js?v=20260615"></script>
+    <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var courseId = params.get('courseId');
+      if (courseId && window.NibrasCourses?.isValidCourseId?.(courseId)) {
+        window.NibrasCourses.setSelectedCourseId(courseId);
+        window.location.replace(
+          './Course Description/courseContent.html?courseId=' +
+            encodeURIComponent(courseId),
+        );
+      }
+    })();
+    </script>
+    <script src="./courses.js?v=20260615"></script>
     <script src="../services/gamification-ui.js"></script>
     <script>
     (function() {
