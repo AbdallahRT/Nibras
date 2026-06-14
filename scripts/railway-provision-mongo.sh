@@ -24,12 +24,21 @@ if has_mongo; then
 else
   echo "==> Adding MongoDB database to Railway project..."
   if ! railway add --database mongo --json >/dev/null 2>&1; then
-    echo "Could not add MongoDB via CLI (interactive prompt or network issue)." >&2
-    echo "Add MongoDB manually: Railway dashboard → New → Database → MongoDB" >&2
-    echo "Then re-run: ./scripts/railway-secrets.sh && ./scripts/railway-deploy.sh" >&2
-    exit 1
+    echo "Managed MongoDB template failed (volume limit or CLI issue). Trying Docker image..."
+    if ! railway add --image mongo:7 --service MongoDB --json >/dev/null 2>&1; then
+      echo "Could not add MongoDB via CLI." >&2
+      echo "Add MongoDB manually: Railway dashboard → New → Database → MongoDB" >&2
+      echo "Or set MONGO_URI in railway/env.local for an external MongoDB (Atlas, etc.)" >&2
+      exit 1
+    fi
+    railway variable set -s MongoDB \
+      "MONGO_INITDB_ROOT_USERNAME=mongo" \
+      "MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-HojkFpiPzZWwsoipjdCsqwbroGvUsITO}" \
+      --skip-deploys
+    echo "MongoDB image service added (configure MONGO_URI on backend if not using \${{MongoDB.MONGO_URL}})."
+  else
+    echo "MongoDB database added."
   fi
-  echo "MongoDB database added."
 fi
 
 if railway service list --json 2>/dev/null | jq -r '.[].name' 2>/dev/null | rg -i "^${BACKEND_SERVICE}$" >/dev/null; then

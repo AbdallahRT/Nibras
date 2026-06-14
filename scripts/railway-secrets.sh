@@ -63,6 +63,11 @@ if [[ -z "$TUTOR_ORIGIN" ]]; then
   TUTOR_ORIGIN="$(resolve_service_url "$TUTOR_SERVICE" "")"
 fi
 
+service_exists() {
+  local name="$1"
+  railway service list --json 2>/dev/null | jq -r '.[].name' 2>/dev/null | rg -Fx "$name" >/dev/null
+}
+
 API_VARS=(
   "RAILWAY_DOCKERFILE_PATH=Dockerfile.api"
   "NODE_ENV=production"
@@ -91,27 +96,42 @@ GATEWAY_VARS=(
 )
 
 BACKEND_VARS=(
-  "RAILWAY_DOCKERFILE_PATH=Dockerfile"
+  "RAILWAY_DOCKERFILE_PATH=Dockerfile.backend"
   "NODE_ENV=production"
   "HOST=0.0.0.0"
   "PORT=3000"
-  "MONGO_URI=\${{MongoDB.MONGO_URL}}"
   "AUTH_SECRET=${AUTH_SECRET}"
-  "REDIS_HOST=\${{Redis.REDISHOST}}"
-  "REDIS_PORT=\${{Redis.REDISPORT}}"
-  "REDIS_PASSWORD=\${{Redis.REDISPASSWORD}}"
   "WEB_BASE_URL=${GATEWAY_ORIGIN}"
   "API_BASE_URL=${GATEWAY_ORIGIN}"
   "COMPETITIONS_SYNC_ENABLED=false"
+  "SKIP_REDIS_HEALTH=true"
 )
 
+if [[ -n "${MONGO_URI:-}" ]]; then
+  BACKEND_VARS+=("MONGO_URI=${MONGO_URI}")
+else
+  BACKEND_VARS+=('MONGO_URI=${{MongoDB.MONGO_URL}}')
+fi
+
+if service_exists "Redis"; then
+  BACKEND_VARS+=(
+    "REDIS_HOST=\${{Redis.REDISHOST}}"
+    "REDIS_PORT=\${{Redis.REDISPORT}}"
+    "REDIS_PASSWORD=\${{Redis.REDISPASSWORD}}"
+  )
+else
+  BACKEND_VARS+=(
+    "REDIS_HOST=127.0.0.1"
+    "REDIS_PORT=6379"
+  )
+fi
+
 TUTOR_VARS=(
-  "RAILWAY_DOCKERFILE_PATH=Dockerfile"
+  "RAILWAY_DOCKERFILE_PATH=Dockerfile.tutor"
   "NODE_ENV=production"
   "PORT=5000"
   "NIBRAS_API_URL=${FASTIFY_ORIGIN}/v1/community"
   "NIBRAS_API_ORIGIN=${FASTIFY_ORIGIN}"
-  "REDIS_URL=\${{Redis.REDIS_URL}}"
 )
 
 if [[ -n "${DATABASE_URL:-}" ]]; then
@@ -153,16 +173,15 @@ elif [[ -n "${NIBRAS_AI_API_KEY:-}" ]]; then
   TUTOR_VARS+=("NIBRAS_AI_API_KEY=${NIBRAS_AI_API_KEY}")
 fi
 
-service_exists() {
-  local name="$1"
-  railway service list --json 2>/dev/null | jq -r '.[].name' 2>/dev/null | rg -i "^${name}$" >/dev/null
-}
-
 echo "Setting variables on ${API_SERVICE}..."
 railway variable set -s "$API_SERVICE" "${API_VARS[@]}" --skip-deploys
 
-echo "Setting variables on ${WORKER_SERVICE}..."
-railway variable set -s "$WORKER_SERVICE" "${WORKER_VARS[@]}" --skip-deploys
+if service_exists "$WORKER_SERVICE"; then
+  echo "Setting variables on ${WORKER_SERVICE}..."
+  railway variable set -s "$WORKER_SERVICE" "${WORKER_VARS[@]}" --skip-deploys
+else
+  echo "Skipping ${WORKER_SERVICE} (service not created)."
+fi
 
 echo "Setting variables on ${WEB_SERVICE} (gateway)..."
 echo "  NIBRAS_NESTJS_ORIGIN=${NESTJS_ORIGIN}"

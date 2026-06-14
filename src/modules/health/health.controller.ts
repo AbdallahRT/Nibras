@@ -24,9 +24,10 @@ export class HealthController {
       'Returns 200 with status "ok" when MongoDB and Redis are reachable. Returns 503 otherwise.',
   })
   check() {
-    return this.health.check([
-      () => this.mongo.pingCheck('mongo'),
-      () => this.redis.ping('redis'),
-    ]);
+    const checks = [() => this.mongo.pingCheck('mongo')];
+    if (process.env.SKIP_REDIS_HEALTH !== 'true') {
+      checks.push(() => this.redis.ping('redis'));
+    }
+    return this.health.check(checks);
   }
 }

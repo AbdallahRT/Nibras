@@ -148,9 +148,13 @@ echo "==> Deploy API (${API_SERVICE})"
 railway up --service "$API_SERVICE" -y -d -m "Deploy Fastify API"
 wait_for_deploy "$API_SERVICE" || true
 
-echo "==> Deploy worker (${WORKER_SERVICE})"
-railway up --service "$WORKER_SERVICE" -y -d -m "Deploy worker"
-wait_for_deploy "$WORKER_SERVICE" || true
+if service_exists "$WORKER_SERVICE"; then
+  echo "==> Deploy worker (${WORKER_SERVICE})"
+  railway up --service "$WORKER_SERVICE" -y -d -m "Deploy worker"
+  wait_for_deploy "$WORKER_SERVICE" || true
+else
+  echo "Skipping ${WORKER_SERVICE} (service not created)."
+fi
 
 echo "==> Deploy gateway (${WEB_SERVICE})"
 railway up --service "$WEB_SERVICE" -y -d -m "Deploy gateway"
