@@ -13,8 +13,6 @@ console.log('[COURSES.JS] Script started (direct execution)');
 
 let coursesData = [];
 let currentLevel = null;
-let activeCategory = 'all';
-let mappedCoursesAll = [];
 
 function getLocalCoursesForLevel(level) {
   var nc = window.NibrasCourses;
@@ -33,10 +31,6 @@ function getLevelFromCourseId(courseId) {
 }
 
 function updateLevelHeader(level) {
-  var levelTitleEl = document.getElementById('page-level-title');
-  if (levelTitleEl) {
-    levelTitleEl.textContent = level + ' Courses';
-  }
   var levelBadgeEl = document.getElementById('page-level-badge');
   if (levelBadgeEl) {
     levelBadgeEl.textContent = level;
@@ -131,23 +125,16 @@ function renderPracticeCard(course, grid) {
   grid.innerHTML += html;
 }
 
-function filterAndRender(category, grid, countBadge) {
+function renderCourses(grid, countBadge) {
   if (!grid) return;
   grid.innerHTML = '';
-  const filteredData = coursesData.filter((course) => {
-    if (category === 'all') return true;
-    return course.category === category;
-  });
   if (countBadge) {
-    countBadge.textContent = filteredData.length;
+    countBadge.textContent = coursesData.length;
   }
   console.log(
-    '[COURSES.JS] Rendering ' +
-      filteredData.length +
-      ' courses for category: ' +
-      category,
+    '[COURSES.JS] Rendering ' + coursesData.length + ' courses for level',
   );
-  filteredData.forEach((course) => {
+  coursesData.forEach((course) => {
     if (course.type === 'practice_lab') {
       renderPracticeCard(course, grid);
     } else {
@@ -164,15 +151,13 @@ function loadCoursesForLevel(level, grid, countBadge) {
     );
     if (countBadge) countBadge.textContent = '0';
     coursesData = [];
-    mappedCoursesAll = [];
     return;
   }
 
   coursesData = getLocalCoursesForLevel(level).map(function (course) {
     return Object.assign({}, course);
   });
-  mappedCoursesAll = coursesData;
-  filterAndRender(activeCategory, grid, countBadge);
+  renderCourses(grid, countBadge);
 }
 
 function checkLevelComplete() {
@@ -250,6 +235,8 @@ async function hydrateCourseProgress(grid, countBadge) {
           var identifiers = await resolveAsync(course.id, { loadRemote: true });
           if (!identifiers) return;
           course.trackingCourseId = identifiers.trackingCourseId || '';
+          course.trackingCourseIdForApi =
+            identifiers.trackingCourseIdForApi || identifiers.trackingCourseId || '';
           course.adminCourseId = identifiers.adminCourseId || '';
           course.backendCourseId = identifiers.backendCourseId || '';
           course.remoteCourseId = identifiers.adminCourseId || null;
@@ -259,21 +246,23 @@ async function hydrateCourseProgress(grid, countBadge) {
   }
 
   var coursesService = window.NibrasServices?.coursesService;
-  if (coursesService && typeof coursesService.getProgress === 'function') {
+  var trackingCourseService = window.NibrasServices?.trackingCourseService;
+  if (trackingCourseService && typeof trackingCourseService.getDetail === 'function') {
     try {
       var progressResults = await Promise.allSettled(
         coursesData.map(function (c) {
-          var bid = c.adminCourseId || c.backendCourseId || c.remoteCourseId;
-          return bid ? coursesService.getProgress(bid) : Promise.resolve(null);
+          if (c.type === 'practice_lab') return Promise.resolve(null);
+          var trackingId = c.trackingCourseId || c.trackingCourseIdForApi;
+          return trackingId
+            ? trackingCourseService.getDetail(trackingId)
+            : Promise.resolve(null);
         }),
       );
       coursesData.forEach(function (c, i) {
         var result = progressResults[i];
         if (result.status === 'fulfilled' && result.value) {
-          var pct =
-            result.value?.data?.percentage ??
-            result.value?.percentage ??
-            result.value?.data?.overallPercentage;
+          var detail = result.value?.data || result.value;
+          var pct = detail?.videoProgressPercent;
           if (Number.isFinite(Number(pct))) {
             c.progress = Math.max(0, Math.min(100, Math.round(Number(pct))));
           }
@@ -297,10 +286,35 @@ async function hydrateCourseProgress(grid, countBadge) {
         error?.message || error,
       );
     }
+  } else if (coursesService && typeof coursesService.getProgress === 'function') {
+    try {
+      var legacyResults = await Promise.allSettled(
+        coursesData.map(function (c) {
+          var bid = c.adminCourseId || c.backendCourseId || c.remoteCourseId;
+          return bid ? coursesService.getProgress(bid) : Promise.resolve(null);
+        }),
+      );
+      coursesData.forEach(function (c, i) {
+        var result = legacyResults[i];
+        if (result.status === 'fulfilled' && result.value) {
+          var pct =
+            result.value?.data?.percentage ??
+            result.value?.percentage ??
+            result.value?.data?.overallPercentage;
+          if (Number.isFinite(Number(pct))) {
+            c.progress = Math.max(0, Math.min(100, Math.round(Number(pct))));
+          }
+        }
+      });
+    } catch (error) {
+      console.warn(
+        '[COURSES.JS] Failed to hydrate legacy progress:',
+        error?.message || error,
+      );
+    }
   }
 
-  mappedCoursesAll = coursesData;
-  filterAndRender(activeCategory, grid, countBadge);
+  renderCourses(grid, countBadge);
   checkLevelComplete();
 }
 
@@ -366,7 +380,6 @@ async function initCourses() {
 
   const grid = document.getElementById('courses-container');
   const countBadge = document.getElementById('course-count');
-  const tabs = document.querySelectorAll('.tab-btn');
 
   if (!grid) {
     console.error('[COURSES.JS] ERROR: courses-container not found!');
@@ -386,15 +399,6 @@ async function initCourses() {
     link.addEventListener('click', () => {
       navLinks.forEach((n) => n.classList.remove('active'));
       link.classList.add('active');
-    });
-  });
-
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      tabs.forEach((t) => t.classList.remove('active'));
-      tab.classList.add('active');
-      activeCategory = tab.dataset.category;
-      filterAndRender(activeCategory, grid, countBadge);
     });
   });
 

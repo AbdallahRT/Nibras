@@ -1727,8 +1727,8 @@
         url: 'Courses/Projects/Projects.html',
       },
       {
-        keywords: ['intermediate courses'],
-        url: 'Courses/intermediateCourses.html',
+        keywords: ['intermediate courses', 'all courses', 'courses'],
+        url: 'Courses/courses.html',
       },
       {
         keywords: ['community', 'feed', 'discussions'],

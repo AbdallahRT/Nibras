@@ -200,34 +200,69 @@ const IDs = {
 
 window.NibrasReact.run(() => {
   document.addEventListener('DOMContentLoaded', () => {
-    setupThemeToggle();
-    setGroupWorkspaceStatus(
-      'info',
-      'Student mode: Group Workspace is visible but read-only in this integration.',
-    );
-
-    const selectedCourse = window.NibrasCourses?.getSelectedCourse?.();
-    if (!selectedCourse) {
-      setApiNotice('Please select a course first.', 'empty');
-      return;
-    }
-
-    const context = resolveProjectsCourseContext(selectedCourse);
-    projectsPageState.courseId = String(context.localCourseId || '');
-    projectsPageState.trackingCourseId = String(
-      context.trackingCourseIdForApi || '',
-    );
-
-    updateCourseMeta(selectedCourse);
-    setupNavigationLinks(context.localCourseId);
-
-    const submitForm = document.getElementById('milestoneSubmitForm');
-    if (submitForm)
-      submitForm.addEventListener('submit', handleMilestoneSubmit);
-
-    void loadProjectsOverview();
+    void initProjectsPage();
   });
 });
+
+async function initProjectsPage() {
+  setupThemeToggle();
+  setGroupWorkspaceStatus(
+    'info',
+    'Student mode: Group Workspace is visible but read-only in this integration.',
+  );
+
+  const selectedCourse = window.NibrasCourses?.getSelectedCourse?.();
+  if (!selectedCourse) {
+    setApiNotice('Please select a course first.', 'empty');
+    return;
+  }
+
+  let identifiers = null;
+  if (typeof window.NibrasCourses?.resolveCourseIdentifiersAsync === 'function') {
+    identifiers = await window.NibrasCourses.resolveCourseIdentifiersAsync(
+      selectedCourse.id,
+      { loadRemote: true, warnOnMissing: true },
+    );
+  } else if (
+    typeof window.NibrasCourses?.resolveCourseIdentifiers === 'function'
+  ) {
+    identifiers = window.NibrasCourses.resolveCourseIdentifiers(
+      selectedCourse.id,
+      { warnOnMissing: true },
+    );
+  }
+
+  const context = identifiers
+    ? {
+        localCourseId: identifiers.localCourseId || selectedCourse.id,
+        trackingCourseIdForApi: identifiers.trackingCourseIdForApi || '',
+        hasTrackingMapping: identifiers.hasTrackingMapping,
+      }
+    : resolveProjectsCourseContext(selectedCourse);
+
+  projectsPageState.courseId = String(context.localCourseId || '');
+  projectsPageState.trackingCourseId = String(
+    context.trackingCourseIdForApi || '',
+  );
+
+  if (identifiers && !identifiers.hasTrackingMapping) {
+    setApiNotice(
+      'Projects require a backend course mapping. Enroll in this course or contact an admin.',
+      'error',
+    );
+    updateCourseMeta(selectedCourse);
+    setupNavigationLinks(context.localCourseId);
+    return;
+  }
+
+  updateCourseMeta(selectedCourse);
+  setupNavigationLinks(context.localCourseId);
+
+  const submitForm = document.getElementById('milestoneSubmitForm');
+  if (submitForm) submitForm.addEventListener('submit', handleMilestoneSubmit);
+
+  void loadProjectsOverview();
+}
 
 async function loadProjectsOverview(forceRefresh) {
   if (!projectsApiClient) {
@@ -1412,9 +1447,22 @@ function setupThemeToggle() {
 }
 
 function resolveProjectsCourseContext(course) {
+  if (typeof window.NibrasCourses?.resolveCourseIdentifiers === 'function') {
+    const identifiers = window.NibrasCourses.resolveCourseIdentifiers(
+      course.id,
+    );
+    if (identifiers) {
+      return {
+        localCourseId: identifiers.localCourseId,
+        trackingCourseIdForApi: identifiers.trackingCourseIdForApi,
+        hasTrackingMapping: identifiers.hasTrackingMapping,
+      };
+    }
+  }
   return {
     localCourseId: course.id,
-    trackingCourseIdForApi: course.trackingCourseId || course.id,
+    trackingCourseIdForApi: course.trackingCourseIdForApi || course.trackingCourseId || course.id,
+    hasTrackingMapping: Boolean(course.trackingCourseId),
   };
 }
 

@@ -52,6 +52,48 @@
     return payload;
   };
 
+  const normalizeCommunityThreadList = (payload) => {
+    const raw = unwrapApiData(payload) || payload || {};
+    const threads = Array.isArray(raw.items)
+      ? raw.items
+      : Array.isArray(raw.threads)
+        ? raw.threads
+        : Array.isArray(raw)
+          ? raw
+          : [];
+    return {
+      threads,
+      total: raw.total,
+      page: raw.page,
+      limit: raw.limit,
+    };
+  };
+
+  const normalizeCommunityThread = (payload) => {
+    const raw = unwrapApiData(payload) || payload || {};
+    const thread =
+      raw.thread && typeof raw.thread === 'object' ? raw.thread : raw;
+    return { thread };
+  };
+
+  const normalizeCommunityPostList = (payload) => {
+    const raw = unwrapApiData(payload) || payload;
+    const posts = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw?.items)
+        ? raw.items
+        : Array.isArray(raw?.posts)
+          ? raw.posts
+          : [];
+    return { posts };
+  };
+
+  const normalizeCommunityPost = (payload) => {
+    const raw = unwrapApiData(payload) || payload || {};
+    const post = raw.post && typeof raw.post === 'object' ? raw.post : raw;
+    return { post };
+  };
+
   const buildQueryString = (paramsObject = {}) => {
     const params = new URLSearchParams();
     Object.keys(paramsObject).forEach((key) => {
@@ -1713,16 +1755,19 @@
   // ============================================================
   const communityCourseService = {
     /**
-     * List community courses
-     * @param {object} filters - { search, isActive, instructor }
+     * List courses available for discussions
+     * @param {object} filters - ignored; kept for API compatibility
      * @returns {Promise<{courses: Array}>}
      */
-    async list(filters = {}) {
-      return apiFetch(`/courses${toQueryString(filters)}`, {
+    async list(_filters = {}) {
+      const payload = await apiFetch('/v1/community/discussion-courses', {
         service: 'community',
         method: 'GET',
         auth: true,
       });
+      const raw = unwrapApiData(payload) || payload || {};
+      const courses = Array.isArray(raw.courses) ? raw.courses : [];
+      return { courses };
     },
 
     /**
@@ -1777,14 +1822,21 @@
      * @returns {Promise<{threads: Array}>}
      */
     async listByCourse(courseId, filters = {}) {
-      return apiFetch(
-        `/v1/community/threads/course/${courseId}${toQueryString(filters)}`,
+      const apiFilters = Object.assign({}, filters);
+      if (apiFilters.search) {
+        apiFilters.q = apiFilters.search;
+        delete apiFilters.search;
+      }
+      delete apiFilters.status;
+      const payload = await apiFetch(
+        `/v1/community/threads/course/${courseId}${toQueryString(apiFilters)}`,
         {
           service: 'community',
           method: 'GET',
           auth: true,
         },
       );
+      return normalizeCommunityThreadList(payload);
     },
 
     /**
@@ -1793,11 +1845,12 @@
      * @returns {Promise<{thread: object}>}
      */
     async getById(threadId) {
-      return apiFetch(`/v1/community/threads/${threadId}`, {
+      const payload = await apiFetch(`/v1/community/threads/${threadId}`, {
         service: 'community',
         method: 'GET',
         auth: true,
       });
+      return normalizeCommunityThread(payload);
     },
 
     /**
@@ -1807,12 +1860,13 @@
      * @returns {Promise<{thread: object}>}
      */
     async create(courseId, data) {
-      return apiFetch(`/v1/community/threads/${courseId}`, {
+      const payload = await apiFetch(`/v1/community/threads/${courseId}`, {
         service: 'community',
         method: 'POST',
         auth: true,
         body: data,
       });
+      return normalizeCommunityThread(payload);
     },
 
     /**
@@ -1822,12 +1876,13 @@
      * @returns {Promise<{thread: object}>}
      */
     async update(threadId, data) {
-      return apiFetch(`/v1/community/threads/${threadId}`, {
+      const payload = await apiFetch(`/v1/community/threads/${threadId}`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
         body: data,
       });
+      return normalizeCommunityThread(payload);
     },
 
     /**
@@ -1844,39 +1899,49 @@
     },
 
     async pin(threadId) {
-      return apiFetch(`/v1/community/threads/${threadId}/pin`, {
+      const payload = await apiFetch(`/v1/community/threads/${threadId}/pin`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
         body: {},
       });
+      return normalizeCommunityThread(payload);
     },
 
     async unpin(threadId) {
-      return apiFetch(`/v1/community/threads/${threadId}/unpin`, {
-        service: 'community',
-        method: 'PATCH',
-        auth: true,
-        body: {},
-      });
+      const payload = await apiFetch(
+        `/v1/community/threads/${threadId}/unpin`,
+        {
+          service: 'community',
+          method: 'PATCH',
+          auth: true,
+          body: {},
+        },
+      );
+      return normalizeCommunityThread(payload);
     },
 
     async close(threadId) {
-      return apiFetch(`/v1/community/threads/${threadId}/close`, {
-        service: 'community',
-        method: 'PATCH',
-        auth: true,
-        body: {},
-      });
+      const payload = await apiFetch(
+        `/v1/community/threads/${threadId}/close`,
+        {
+          service: 'community',
+          method: 'PATCH',
+          auth: true,
+          body: {},
+        },
+      );
+      return normalizeCommunityThread(payload);
     },
 
     async open(threadId) {
-      return apiFetch(`/v1/community/threads/${threadId}/open`, {
+      const payload = await apiFetch(`/v1/community/threads/${threadId}/open`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
         body: {},
       });
+      return normalizeCommunityThread(payload);
     },
   };
 
@@ -1890,11 +1955,15 @@
      * @returns {Promise<{posts: Array}>}
      */
     async listByThread(threadId) {
-      return apiFetch(`/v1/community/posts/thread/${threadId}`, {
-        service: 'community',
-        method: 'GET',
-        auth: true,
-      });
+      const payload = await apiFetch(
+        `/v1/community/posts/thread/${threadId}`,
+        {
+          service: 'community',
+          method: 'GET',
+          auth: true,
+        },
+      );
+      return normalizeCommunityPostList(payload);
     },
 
     /**
@@ -1903,11 +1972,12 @@
      * @returns {Promise<{post: object}>}
      */
     async getById(postId) {
-      return apiFetch(`/v1/community/posts/${postId}`, {
+      const payload = await apiFetch(`/v1/community/posts/${postId}`, {
         service: 'community',
         method: 'GET',
         auth: true,
       });
+      return normalizeCommunityPost(payload);
     },
 
     /**
@@ -1917,12 +1987,13 @@
      * @returns {Promise<{post: object}>}
      */
     async create(threadId, data) {
-      return apiFetch(`/v1/community/posts/${threadId}`, {
+      const payload = await apiFetch(`/v1/community/posts/${threadId}`, {
         service: 'community',
         method: 'POST',
         auth: true,
         body: data,
       });
+      return normalizeCommunityPost(payload);
     },
 
     /**
@@ -1932,12 +2003,13 @@
      * @returns {Promise<{post: object}>}
      */
     async update(postId, data) {
-      return apiFetch(`/v1/community/posts/${postId}`, {
+      const payload = await apiFetch(`/v1/community/posts/${postId}`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
         body: data,
       });
+      return normalizeCommunityPost(payload);
     },
 
     /**
@@ -1954,21 +2026,23 @@
     },
 
     async pin(postId) {
-      return apiFetch(`/v1/community/posts/${postId}/pin`, {
+      const payload = await apiFetch(`/v1/community/posts/${postId}/pin`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
         body: {},
       });
+      return normalizeCommunityPost(payload);
     },
 
     async accept(postId) {
-      return apiFetch(`/v1/community/posts/${postId}/accept`, {
+      const payload = await apiFetch(`/v1/community/posts/${postId}/accept`, {
         service: 'community',
         method: 'PATCH',
         auth: true,
         body: {},
       });
+      return normalizeCommunityPost(payload);
     },
   };
 
@@ -3129,6 +3203,23 @@
     async getById(courseId) {
       return apiFetch(
         `/v1/tracking/courses/${encodeURIComponent(String(courseId))}`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    /**
+     * Get course detail with video progress summary
+     * Backend: GET /v1/tracking/courses/:courseId/detail
+     * @param {string} courseId
+     * @returns {Promise<object>}
+     */
+    async getDetail(courseId) {
+      return apiFetch(
+        `/v1/tracking/courses/${encodeURIComponent(String(courseId))}/detail`,
         {
           service: 'tracking',
           method: 'GET',

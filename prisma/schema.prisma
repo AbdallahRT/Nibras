@@ -1308,6 +1308,7 @@ enum CommunityVoteTargetType {
   question
   answer
   post
+  thread
 }
 
 enum CommunityModerationStatus {
@@ -1433,6 +1434,7 @@ model CommunityThread {
   tags             String[]
   pinned           Boolean                   @default(false)
   closed           Boolean                   @default(false)
+  votesCount       Int                       @default(0)
   postsCount       Int                       @default(0)
   lastActivityAt   DateTime                  @default(now())
   moderationStatus CommunityModerationStatus @default(visible)

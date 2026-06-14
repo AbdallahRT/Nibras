@@ -99,13 +99,6 @@ window.NibrasReact.run(() => {
         (key) => key.toLowerCase() === 'authorization',
       )
     ) {
-      const token = getToken();
-      console.log(
-        '[DEBUG] Token for',
-        path,
-        ':',
-        token ? 'Found' : 'NOT FOUND',
-      );
       if (token) headers.Authorization = `Bearer ${token}`;
     }
 
@@ -159,21 +152,12 @@ window.NibrasReact.run(() => {
     );
   };
 
-  const resolveSocketBaseUrl = () => {
-    const normalized = String(resolveServiceUrl('community') || '').replace(
-      /\/+$/,
-      '',
-    );
-    if (!normalized) return normalized;
-    return normalized.replace(/\/api(?:\/community)?$/i, '');
-  };
-
   const communityAuthService = services.communityAuthService || {
     getMe: () => requestCommunity('/auth/me', { method: 'GET', auth: true }),
   };
   const communityCourseService = services.communityCourseService || {
-    list: (filters = {}) =>
-      requestCommunity(`/courses${toQueryString(filters)}`, {
+    list: () =>
+      requestCommunity('/v1/community/discussion-courses', {
         method: 'GET',
         auth: true,
       }),
@@ -264,10 +248,8 @@ window.NibrasReact.run(() => {
       search: '',
       status: 'all',
     },
-    socket: null,
-    refreshTimer: null,
-    typingTimer: null,
-    typingUsers: {},
+    pollTimer: null,
+    allThreads: [],
   };
 
   initializeThemeToggle();
@@ -337,7 +319,7 @@ window.NibrasReact.run(() => {
     elements.courseSelect?.addEventListener('change', () => {
       state.communityCourseId = String(elements.courseSelect.value || '');
       persistMappedCommunityCourseId();
-      refreshAll({ announce: false, joinSocketRoom: true });
+      refreshAll({ announce: false });
     });
 
     elements.searchInput?.addEventListener(
@@ -350,7 +332,8 @@ window.NibrasReact.run(() => {
 
     elements.statusFilter?.addEventListener('change', () => {
       state.filters.status = String(elements.statusFilter.value || 'all');
-      loadThreads({ announce: false });
+      state.threads = applyThreadFilters(state.allThreads);
+      renderThreads();
     });
 
     elements.openThreadModalButton?.addEventListener('click', () => {
@@ -448,31 +431,28 @@ window.NibrasReact.run(() => {
   }
 
   async function bootstrap() {
-    console.log('[Bootstrap] Starting...');
     try {
       await loadCurrentUser();
       updateSidebarUser();
       if (window.NibrasShared?.session?.updateUserInfoDisplay) {
         window.NibrasShared.session.updateUserInfoDisplay();
       }
-      console.log('[Bootstrap] User loaded:', state.user);
       if (!state.user) {
         renderAuthRequiredState();
         return;
       }
       await loadCommunityCourses();
-      console.log('[Bootstrap] Courses loaded:', state.availableCourses.length);
-
       pickInitialCommunityCourse();
       renderCourseSelect();
       updateUI();
-      initSocket();
-      setupTypingListeners();
-      setInterval(updateTypingIndicator, 2000);
+      startThreadPolling();
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+          loadThreads({ announce: false, silent: true });
+        }
+      });
       await loadThreads({ announce: true });
-      console.log('[Bootstrap] Done');
     } catch (error) {
-      console.error('[Bootstrap] Error:', error);
       showNotice('Error loading page: ' + error.message, 'error');
     }
   }
@@ -489,14 +469,10 @@ window.NibrasReact.run(() => {
 
   async function loadCurrentUser() {
     try {
-      console.log('[Auth] Loading user via communityAuthService...');
       const payload = await communityAuthService.getMe();
-      console.log('[Auth] Payload:', payload);
       state.user = pickEntity(payload, 'user');
-      console.log('[Auth] User set to:', state.user);
       clearNotice();
     } catch (error) {
-      console.error('[Auth] Error:', error);
       state.user = null;
       showErrorNotice(
         error,
@@ -506,15 +482,80 @@ window.NibrasReact.run(() => {
     }
   }
 
+  function getUserLevel() {
+    if (state.user?.selectedLevel) return state.user.selectedLevel;
+    try {
+      var u = JSON.parse(localStorage.getItem('user') || '{}');
+      return u.selectedLevel || 'Beginner';
+    } catch (_) {
+      return 'Beginner';
+    }
+  }
+
+  function getLocalCoursesForLevel(level) {
+    if (level === 'Intermediate' && coursesApi.getIntermediateCoursesList) {
+      return coursesApi.getIntermediateCoursesList();
+    }
+    if (level === 'Advanced' && coursesApi.getAdvancedCoursesList) {
+      return coursesApi.getAdvancedCoursesList();
+    }
+    if (level === 'Expert' && coursesApi.getExpertCoursesList) {
+      return coursesApi.getExpertCoursesList();
+    }
+    return coursesApi.getCoursesList ? coursesApi.getCoursesList() : [];
+  }
+
   async function loadCommunityCourses() {
     try {
-      var userLevel = state.user?.selectedLevel || 'Beginner';
-      var payload = await communityCourseService.list({ level: userLevel });
-      console.log('[Courses] Response:', payload);
-      state.availableCourses = pickArray(payload, 'courses');
-      console.log('[Courses] Loaded:', state.availableCourses.length);
-    } catch (error) {
-      console.error('[Courses] Error:', error);
+      var userLevel = getUserLevel();
+      var localCourses = getLocalCoursesForLevel(userLevel).filter(function (c) {
+        return c && c.type !== 'practice_lab';
+      });
+      var mapped = [];
+      var resolveAsync = coursesApi.resolveCourseIdentifiersAsync;
+
+      if (typeof resolveAsync === 'function') {
+        await Promise.all(
+          localCourses.map(async function (course) {
+            var ids = await resolveAsync(course.id, { loadRemote: true });
+            var trackingId =
+              ids?.trackingCourseIdForApi || ids?.trackingCourseId || '';
+            if (!trackingId) return;
+            mapped.push({
+              id: trackingId,
+              title: course.title,
+              courseCode: course.code || '',
+              localCourseId: course.id,
+            });
+          }),
+        );
+      }
+
+      try {
+        var payload = await communityCourseService.list();
+        var remoteCourses = pickArray(payload, 'courses');
+        remoteCourses.forEach(function (remote) {
+          var remoteId = getId(remote);
+          if (!remoteId) return;
+          if (
+            !mapped.some(function (c) {
+              return getId(c) === remoteId;
+            })
+          ) {
+            mapped.push({
+              id: remoteId,
+              title: remote.title || remote.courseCode || 'Course',
+              courseCode: remote.courseCode || '',
+              localCourseId: '',
+            });
+          }
+        });
+      } catch (_) {}
+
+      state.availableCourses = mapped.sort(function (a, b) {
+        return String(a.title).localeCompare(String(b.title));
+      });
+    } catch (_) {
       state.availableCourses = [];
     }
   }
@@ -545,6 +586,8 @@ window.NibrasReact.run(() => {
         ? coursesApi.resolveCourseIdentifiers(selectedLocalCourse.id) || null
         : null;
     const idCandidates = [
+      normalizeIdentifier(identifiers?.trackingCourseIdForApi),
+      normalizeIdentifier(identifiers?.trackingCourseId),
       normalizeIdentifier(identifiers?.backendCourseId),
       normalizeIdentifier(identifiers?.adminCourseId),
     ].filter(Boolean);
@@ -655,8 +698,6 @@ window.NibrasReact.run(() => {
 
     const params = {};
     if (state.filters.search) params.search = state.filters.search;
-    if (state.filters.status && state.filters.status !== 'all')
-      params.status = state.filters.status;
 
     if (options.announce) {
       showNotice('Loading threads...', 'loading');
@@ -667,13 +708,11 @@ window.NibrasReact.run(() => {
         state.communityCourseId,
         params,
       );
-      state.threads = pickArray(payload, 'threads');
+      state.allThreads = pickArray(payload, 'threads');
+      state.threads = applyThreadFilters(state.allThreads);
       await loadThreadVotes();
       renderThreads();
-      clearNotice();
-      if (options.joinSocketRoom) {
-        joinCourseRoom();
-      }
+      if (!options.silent) clearNotice();
     } catch (error) {
       state.threads = [];
       renderThreads();
@@ -686,6 +725,24 @@ window.NibrasReact.run(() => {
         showErrorNotice(error, 'Could not load discussion threads.');
       }
     }
+  }
+
+  function applyThreadFilters(threads) {
+    var filtered = Array.isArray(threads) ? threads.slice() : [];
+    if (state.filters.status === 'open') {
+      filtered = filtered.filter(function (t) {
+        return String(t?.status || 'open') !== 'closed' && !t?.closed;
+      });
+    } else if (state.filters.status === 'closed') {
+      filtered = filtered.filter(function (t) {
+        return String(t?.status || '') === 'closed' || t?.closed === true;
+      });
+    }
+    return filtered;
+  }
+
+  function getUserRole() {
+    return String(state.user?.role?.name || state.user?.role || '').toLowerCase();
   }
 
   function renderAuthRequiredState() {
@@ -737,13 +794,15 @@ window.NibrasReact.run(() => {
     const courseId = getId(thread?.course);
     const currentVote = Number(state.threadVoteById.get(threadId) || 0);
     const isOwner = isCurrentUser(thread?.author);
-    const isAdmin = state.user?.role === 'admin';
-    const isInstructor = state.user?.role === 'instructor';
+    const role = getUserRole();
+    const isAdmin = role === 'admin';
+    const isInstructor = role === 'instructor';
     const canPin = isAdmin || isInstructor;
     const canClose = isOwner || isAdmin || isInstructor;
     const canOpen = isAdmin || isInstructor;
     const canDelete = isOwner || isAdmin || isInstructor;
-    const isClosed = String(thread?.status || 'open') === 'closed';
+    const isClosed =
+      String(thread?.status || 'open') === 'closed' || thread?.closed === true;
     const detailHref = `./thread.html?threadId=${encodeURIComponent(threadId)}&courseId=${encodeURIComponent(state.selectedCourse?.id || '')}&communityCourseId=${encodeURIComponent(state.communityCourseId || courseId || '')}`;
 
     const badges = [];
@@ -847,114 +906,21 @@ window.NibrasReact.run(() => {
     await loadThreads({ announce: false });
   }
 
-  function initSocket() {
-    if (typeof window.io !== 'function') return;
-    const baseUrl = resolveSocketBaseUrl();
-    state.socket = window.io(baseUrl, {
-      transports: ['websocket', 'polling'],
-    });
-    state.socket.on('connect', () => {
-      joinCourseRoom();
-    });
-    state.socket.on('thread:created', (payload) => {
-      const payloadCourseId = normalizeIdentifier(payload?.course);
-      if (
-        !state.communityCourseId ||
-        payloadCourseId !== normalizeIdentifier(state.communityCourseId)
-      )
-        return;
-      if (state.refreshTimer) {
-        clearTimeout(state.refreshTimer);
-      }
-      state.refreshTimer = setTimeout(() => {
-        loadThreads({ announce: false });
-      }, 250);
-    });
-    state.socket.on('typing:update', (payload) => {
-      if (!payload || payload.userId === getCurrentUserId()) return;
-      var payloadCourse = normalizeIdentifier(payload.courseId);
-      if (
-        payloadCourse &&
-        payloadCourse !== normalizeIdentifier(state.communityCourseId)
-      )
-        return;
-      state.typingUsers[payload.userId] = {
-        name: payload.name || 'Someone',
-        timestamp: Date.now(),
-      };
-      updateTypingIndicator();
-    });
-    window.addEventListener('beforeunload', () => {
-      if (state.socket) state.socket.disconnect();
-    });
+  function startThreadPolling() {
+    stopThreadPolling();
+    state.pollTimer = setInterval(function () {
+      if (document.visibilityState !== 'visible') return;
+      if (!state.user || !state.communityCourseId) return;
+      loadThreads({ announce: false, silent: true });
+    }, 30000);
+    window.addEventListener('beforeunload', stopThreadPolling);
   }
 
-  function getCurrentUserId() {
-    return normalizeIdentifier(state.user?._id || state.user?.id || '');
-  }
-
-  function setupTypingListeners() {
-    if (!elements.titleInput || !elements.bodyInput) return;
-    function onInput() {
-      if (!state.socket || !state.communityCourseId) return;
-      state.socket.emit('typing:start', {
-        courseId: state.communityCourseId,
-        userId: getCurrentUserId(),
-        name: state.user?.name || 'Someone',
-      });
-      if (state.typingTimer) clearTimeout(state.typingTimer);
-      state.typingTimer = setTimeout(stopTyping, 2000);
+  function stopThreadPolling() {
+    if (state.pollTimer) {
+      clearInterval(state.pollTimer);
+      state.pollTimer = null;
     }
-    elements.titleInput.addEventListener('input', onInput);
-    elements.bodyInput.addEventListener('input', onInput);
-    elements.titleInput.addEventListener('blur', stopTyping);
-    elements.bodyInput.addEventListener('blur', stopTyping);
-  }
-
-  function stopTyping() {
-    if (state.typingTimer) {
-      clearTimeout(state.typingTimer);
-      state.typingTimer = null;
-    }
-    if (state.socket && state.communityCourseId) {
-      state.socket.emit('typing:stop', {
-        courseId: state.communityCourseId,
-        userId: getCurrentUserId(),
-      });
-    }
-  }
-
-  function updateTypingIndicator() {
-    var indicator = document.getElementById('typing-indicator');
-    if (!indicator) return;
-    var now = Date.now();
-    var active = [];
-    for (var id in state.typingUsers) {
-      if (now - state.typingUsers[id].timestamp > 3000) {
-        delete state.typingUsers[id];
-      } else {
-        active.push(state.typingUsers[id].name);
-      }
-    }
-    if (active.length === 0) {
-      indicator.style.opacity = '0';
-      return;
-    }
-    var text =
-      active.length === 1
-        ? active[0] + ' is creating a thread...'
-        : 'Multiple people are creating threads...';
-    indicator.textContent = text;
-    indicator.style.opacity = '1';
-    clearTimeout(indicator._hideTimer);
-    indicator._hideTimer = setTimeout(function () {
-      indicator.style.opacity = '0';
-    }, 3000);
-  }
-
-  function joinCourseRoom() {
-    if (!state.socket || !state.communityCourseId) return;
-    state.socket.emit('course:join', state.communityCourseId);
   }
 
   function readMappedCommunityCourseId() {
@@ -1046,8 +1012,10 @@ window.NibrasReact.run(() => {
 
   function pickArray(payload, key) {
     if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.items)) return payload.items;
     if (Array.isArray(payload?.[key])) return payload[key];
     if (Array.isArray(payload?.data?.[key])) return payload.data[key];
+    if (Array.isArray(payload?.data?.items)) return payload.data.items;
     if (Array.isArray(payload?.data)) return payload.data;
     return [];
   }

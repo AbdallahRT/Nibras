@@ -152,15 +152,6 @@ window.NibrasReact.run(() => {
     );
   };
 
-  const resolveSocketBaseUrl = () => {
-    const normalized = String(resolveServiceUrl('community') || '').replace(
-      /\/+$/,
-      '',
-    );
-    if (!normalized) return normalized;
-    return normalized.replace(/\/api(?:\/community)?$/i, '');
-  };
-
   const threadService = services.threadService || {
     getById: (threadId) =>
       requestCommunity(`/v1/community/threads/${threadId}`, {
@@ -479,16 +470,25 @@ window.NibrasReact.run(() => {
     await Promise.all(jobs);
   }
 
+  function getUserRole() {
+    return String(
+      state.currentUser?.role?.name || state.currentUser?.role || '',
+    ).toLowerCase();
+  }
+
   function renderThread() {
     if (!elements.threadContainer || !state.thread) return;
-    const isAdmin = state.currentUser?.role === 'admin';
-    const isInstructor = state.currentUser?.role === 'instructor';
+    const role = getUserRole();
+    const isAdmin = role === 'admin';
+    const isInstructor = role === 'instructor';
     const isThreadOwner = isCurrentUser(state.thread?.author);
     const canPin = isAdmin || isInstructor;
     const canClose = isThreadOwner || isAdmin || isInstructor;
     const canOpen = isAdmin || isInstructor;
     const canDelete = isThreadOwner || isAdmin || isInstructor;
-    const isClosed = String(state.thread?.status || 'open') === 'closed';
+    const isClosed =
+      String(state.thread?.status || 'open') === 'closed' ||
+      state.thread?.closed === true;
     const currentVote = Number(state.votesByTargetId.get(state.threadId) || 0);
 
     const tags = Array.isArray(state.thread?.tags)
@@ -579,8 +579,9 @@ window.NibrasReact.run(() => {
   function buildPostCard(post) {
     const postId = getId(post);
     const vote = Number(state.votesByTargetId.get(postId) || 0);
-    const isAdmin = state.currentUser?.role === 'admin';
-    const isInstructor = state.currentUser?.role === 'instructor';
+    const role = getUserRole();
+    const isAdmin = role === 'admin';
+    const isInstructor = role === 'instructor';
     const isThreadOwner = isCurrentUser(state.thread?.author);
     const isPostOwner = isCurrentUser(post?.author);
     const canPin = isAdmin || isInstructor;
@@ -860,8 +861,10 @@ window.NibrasReact.run(() => {
 
   function pickArray(payload, key) {
     if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.items)) return payload.items;
     if (Array.isArray(payload?.[key])) return payload[key];
     if (Array.isArray(payload?.data?.[key])) return payload.data[key];
+    if (Array.isArray(payload?.data?.items)) return payload.data.items;
     if (Array.isArray(payload?.data)) return payload.data;
     return [];
   }
@@ -872,6 +875,27 @@ window.NibrasReact.run(() => {
       if (payload.data?.[key] && typeof payload.data[key] === 'object')
         return payload.data[key];
       if (payload.data && typeof payload.data === 'object') return payload.data;
+      if (
+        key === 'thread' &&
+        (payload.id || payload._id) &&
+        payload.title != null
+      ) {
+        return payload;
+      }
+      if (
+        key === 'post' &&
+        (payload.id || payload._id) &&
+        payload.body != null
+      ) {
+        return payload;
+      }
+      if (
+        key === 'user' &&
+        (payload.id || payload._id) &&
+        (payload.name || payload.username)
+      ) {
+        return payload;
+      }
     }
     return null;
   }

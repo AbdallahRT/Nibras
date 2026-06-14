@@ -424,12 +424,15 @@ export function registerCommunityRoutes(
         CommunityVoteTargetType.question,
         CommunityVoteTargetType.answer,
         CommunityVoteTargetType.post,
+        CommunityVoteTargetType.thread,
       ];
       if (!validTypes.includes(body.targetType as CommunityVoteTargetType)) {
         reply
           .code(400)
           .send(
-            Errors.validation('targetType must be question, answer, or post.'),
+            Errors.validation(
+              'targetType must be question, answer, post, or thread.',
+            ),
           );
         return;
       }
@@ -496,6 +499,12 @@ export function registerCommunityRoutes(
         votesCount = updated.votesCount;
       } else if (targetType === 'post') {
         const updated = await prisma.communityPost.update({
+          where: { id: body.targetId },
+          data: { votesCount: { increment: delta } },
+        });
+        votesCount = updated.votesCount;
+      } else if (targetType === 'thread') {
+        const updated = await prisma.communityThread.update({
           where: { id: body.targetId },
           data: { votesCount: { increment: delta } },
         });
@@ -582,6 +591,44 @@ export function registerCommunityRoutes(
       });
 
       return { action, voteValue: currentVote?.value ?? 0, votesCount };
+    },
+  );
+
+  app.get(
+    '/v1/community/votes/:targetType/:targetId',
+    {
+      schema: {
+        tags: ['community'],
+        summary: 'Get current user vote on a target',
+      },
+    },
+    async (request, reply) => {
+      const auth = await requireUser(request, reply, store);
+      if (!auth) return;
+      const { targetType, targetId } = request.params as {
+        targetType: string;
+        targetId: string;
+      };
+      const validTypes: CommunityVoteTargetType[] = [
+        CommunityVoteTargetType.question,
+        CommunityVoteTargetType.answer,
+        CommunityVoteTargetType.post,
+        CommunityVoteTargetType.thread,
+      ];
+      if (!validTypes.includes(targetType as CommunityVoteTargetType)) {
+        reply.code(400).send(Errors.validation('Invalid targetType.'));
+        return;
+      }
+      const vote = await prisma.communityVote.findUnique({
+        where: {
+          userId_targetType_targetId: {
+            userId: auth.user.id,
+            targetType: targetType as CommunityVoteTargetType,
+            targetId,
+          },
+        },
+      });
+      return { value: vote?.value ?? 0 };
     },
   );
 

@@ -90,6 +90,7 @@ type ThreadRow = {
   tags: string[];
   pinned: boolean;
   closed: boolean;
+  votesCount?: number;
   postsCount: number;
   lastActivityAt: Date;
   createdAt: Date;
@@ -106,6 +107,8 @@ export function presentThread(
   return {
     ...t,
     _id: t.id,
+    isPinned: t.pinned,
+    status: t.closed ? 'closed' : 'open',
     author: presentAuthor(t.author, reputationByUserId),
     replyCount: t.postsCount,
     lastActivityAt: t.lastActivityAt.toISOString(),

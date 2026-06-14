@@ -331,7 +331,65 @@ async function hydrateOverviewFromAdmin(courseId, selectedCourse) {
   }
 }
 
+async function hydrateProgressFromTracking(selectedCourse) {
+  const trackingCourseService = window.NibrasServices?.trackingCourseService;
+  const identifiers =
+    window.NibrasCourses?.resolveCourseIdentifiers?.(selectedCourse?.id) ||
+    null;
+  const trackingId =
+    selectedCourse?.trackingCourseId ||
+    selectedCourse?.trackingCourseIdForApi ||
+    identifiers?.trackingCourseIdForApi ||
+    identifiers?.trackingCourseId;
+
+  if (
+    !trackingCourseService ||
+    typeof trackingCourseService.getDetail !== 'function' ||
+    !trackingId
+  ) {
+    return false;
+  }
+
+  try {
+    const payload = await trackingCourseService.getDetail(trackingId);
+    const detail = payload?.data || payload;
+    const percentage = Number(detail?.videoProgressPercent);
+    if (!Number.isFinite(percentage)) return false;
+
+    const clamped = Math.max(0, Math.min(100, percentage));
+    setText('progress-percent-text', `${clamped}%`);
+    const progressFillMain = document.getElementById('progress-fill-main');
+    if (progressFillMain) {
+      progressFillMain.style.width = `${clamped}%`;
+    }
+
+    const videoCount = Number(detail?.videoCount || 0);
+    if (videoCount > 0 && clamped > 0) {
+      const completedEstimate = Math.round((clamped / 100) * videoCount);
+      setText(
+        'sidebar-progress-text',
+        `${completedEstimate} of ${videoCount} videos watched`,
+      );
+      const sidebarFill = document.getElementById('sidebar-progress-fill');
+      if (sidebarFill) {
+        sidebarFill.style.width = `${clamped}%`;
+      }
+    }
+    return true;
+  } catch (error) {
+    console.warn(
+      '[COURSE-CONTENT] Failed to hydrate progress from tracking API:',
+      error?.message || error,
+    );
+    return false;
+  }
+}
+
 async function hydrateProgressFromCoursesBackend(selectedCourse) {
+  if (await hydrateProgressFromTracking(selectedCourse)) {
+    return;
+  }
+
   const coursesService = window.NibrasServices?.coursesService;
   const backendCourseId =
     selectedCourse?.adminCourseId || selectedCourse?.backendCourseId || null;
