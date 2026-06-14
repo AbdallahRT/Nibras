@@ -879,6 +879,16 @@
         localId,
       );
 
+      const compactCode = normalizeIdentifierToken(meta.code);
+      if (compactCode) {
+        registerIndexEntry(index.byLocalAlias, compactCode, localId);
+        registerIndexEntry(
+          index.byLocalAlias,
+          `stanford-${compactCode}`,
+          localId,
+        );
+      }
+
       configured.aliases.forEach((alias) => {
         registerIndexEntry(
           index.byLocalAlias,
@@ -959,6 +969,8 @@
       remoteCourse?.trackingId,
       remoteCourse?.tracking?.courseId,
       remoteCourse?.courseTrackingId,
+      remoteCourse?.id,
+      remoteCourse?._id,
     );
   }
 
@@ -1109,8 +1121,8 @@
         }
 
         byLocalId[localId] = {
-          remoteId: remoteCourse?._id || null,
-          adminCourseId: remoteCourse?._id || null,
+          remoteId: remoteCourse?._id || remoteCourse?.id || null,
+          adminCourseId: remoteCourse?._id || remoteCourse?.id || null,
           backendCourseId: remoteCourse?.backendCourseId || null,
           trackingCourseId: resolveRemoteTrackingCourseId(remoteCourse) || '',
           title: remoteCourse?.title || '',
@@ -1269,6 +1281,8 @@
       resolvedCourse?.apiCourseId,
       configured.trackingCourseId,
       remote?.trackingCourseId,
+      remote?.remoteId,
+      remote?.adminCourseId,
       trackingFromStorage,
     );
 

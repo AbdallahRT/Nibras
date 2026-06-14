@@ -37,6 +37,19 @@ let savedGPA = localStorage.getItem('calculatedGPA');
 let selectedCourseId = localStorage.getItem('selectedCourseId') || '';
 let dashboardData = {};
 
+const DROPDOWN_TIMEOUT_MS = 15000;
+
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise(function (_, reject) {
+      setTimeout(function () {
+        reject(new Error(label || 'Request timed out'));
+      }, ms);
+    }),
+  ]);
+}
+
 // Helper to resolve tracking service base URL
 function getTrackingBaseUrl() {
   const shared = window.NibrasShared || {};
@@ -126,17 +139,19 @@ async function resolveUserName() {
   return 'Student';
 }
 
-// Load courses for switcher and fetch dashboard data
+// Load courses for switcher (only when #course-switcher exists in the page)
 async function loadCourseSwitcher() {
+  const selector = document.getElementById('course-switcher');
+  if (!selector) return;
+
   try {
     const requestJson = createTrackingRequestJson();
-    const courses = await requestJson('/v1/tracking/courses', {
-      method: 'GET',
-    });
+    const courses = await withTimeout(
+      requestJson('/v1/tracking/courses', { method: 'GET' }),
+      DROPDOWN_TIMEOUT_MS,
+      'Course list request timed out',
+    );
     const courseList = Array.isArray(courses) ? courses : [];
-    const selector = document.getElementById('course-switcher');
-    if (!selector) return;
-    // Clear existing options except the first "All Courses"
     selector.innerHTML = '<option value="">All Courses</option>';
     courseList.forEach((course) => {
       const option = document.createElement('option');
@@ -144,7 +159,6 @@ async function loadCourseSwitcher() {
       option.textContent = course.title || course.name || 'Untitled Course';
       selector.appendChild(option);
     });
-    // Set selected course if matches localStorage
     if (selectedCourseId) {
       selector.value = selectedCourseId;
     }
@@ -153,13 +167,105 @@ async function loadCourseSwitcher() {
   }
 }
 
-async function fetchDashboardData(courseId) {
-  const requestJson = createTrackingRequestJson();
-  let path = '/v1/tracking/dashboard/student';
+function buildTrackingDashboardPath(courseId) {
+  const params = new URLSearchParams({ includeDeadlines: '1' });
   if (courseId) {
-    path += `?courseId=${encodeURIComponent(courseId)}`;
+    params.set('courseId', courseId);
   }
-  return await requestJson(path, { method: 'GET' });
+  return `/v1/tracking/dashboard/student?${params.toString()}`;
+}
+
+async function fetchTrackingDashboard(requestJson, courseId) {
+  return withTimeout(
+    requestJson(buildTrackingDashboardPath(courseId), { method: 'GET' }),
+    DROPDOWN_TIMEOUT_MS,
+    'Tracking dashboard request timed out',
+  );
+}
+
+function normalizeTrackingPayload(payload) {
+  if (window.NibrasProjectsApi?.normalizeDashboardPayload) {
+    return window.NibrasProjectsApi.normalizeDashboardPayload(payload);
+  }
+  return {
+    projects: Array.isArray(payload?.projects) ? payload.projects : [],
+    statusCounters: { approved: 0, in_review: 0, complete: 0 },
+    pageError: '',
+  };
+}
+
+function formatDueLabel(dueAt) {
+  if (!dueAt) return 'TBD';
+  try {
+    return new Date(dueAt).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch (_) {
+    return 'TBD';
+  }
+}
+
+function mapDeadlines(rawPayload) {
+  const deadlines = Array.isArray(rawPayload?.courseDeadlines)
+    ? rawPayload.courseDeadlines
+    : [];
+  return deadlines.slice(0, 5).map(function (item) {
+    return {
+      title: item.title || 'Milestone',
+      code: item.courseTitle || '',
+      date: formatDueLabel(item.dueAt),
+    };
+  });
+}
+
+function buildMilestonesForRender(trackingProjects) {
+  const allMilestones = [];
+  (trackingProjects || []).forEach(function (project) {
+    (project.milestones || []).forEach(function (milestone) {
+      allMilestones.push(milestone);
+    });
+  });
+
+  return allMilestones.slice(0, 3).map(function (milestone) {
+    let statusLabel = milestone.status || 'pending';
+    let statusColor = '#6b7280';
+    let completedPercent = 0;
+
+    switch (statusLabel) {
+      case 'approved':
+      case 'complete':
+        statusLabel = 'Complete';
+        statusColor = '#10b981';
+        completedPercent = 100;
+        break;
+      case 'in_review':
+        statusLabel = 'In Review';
+        statusColor = '#10b981';
+        completedPercent = 0;
+        break;
+      case 'needs_changes':
+        statusLabel = 'Needs Changes';
+        statusColor = '#f97316';
+        completedPercent = 0;
+        break;
+      case 'pending':
+      default:
+        statusLabel = 'Pending';
+        statusColor = '#6b7280';
+        completedPercent = 0;
+        break;
+    }
+
+    return {
+      title: milestone.title || 'Milestone',
+      completed: completedPercent,
+      status: statusLabel,
+      color: statusColor,
+      due: milestone.dueLabel || 'TBD',
+    };
+  });
 }
 
 // Fetch from new courses backend (GitHub backend: Dummy-Nibras)
@@ -717,31 +823,40 @@ const runDashboardInit = () => {
             return payload;
           };
 
-      // Load courses for switcher
-      await loadCourseSwitcher();
+      // Load course switcher in background (non-blocking; element may not exist)
+      if (document.getElementById('course-switcher')) {
+        loadCourseSwitcher().catch(function () {});
+      }
 
       const isLocalHost = ['localhost', '127.0.0.1'].includes(
         window.location.hostname,
       );
+      const courseId = selectedCourseId;
 
       let rawCoursesResponse = null;
-      let dashboardPayload;
+      let rawTrackingResponse = null;
+      let normalizedTracking = null;
       let dashboardSource = 'tracking';
 
+      try {
+        rawTrackingResponse = await fetchTrackingDashboard(requestJson, courseId);
+        normalizedTracking = normalizeTrackingPayload(rawTrackingResponse);
+      } catch (trackingError) {
+        console.warn(
+          '[DASHBOARD.JS] Tracking dashboard unavailable:',
+          trackingError.message,
+        );
+      }
+
       if (isLocalHost || window.NIBRAS_PREFER_LOCAL_TRACKING_FALLBACK) {
-        const courseId = selectedCourseId;
-        let path = '/v1/tracking/dashboard/student';
-        if (courseId) {
-          path += `?courseId=${encodeURIComponent(courseId)}`;
-        }
-        dashboardPayload = await requestJson(path, { method: 'GET' });
         try {
-          rawCoursesResponse = await fetchDashboardFromCoursesBackend();
+          rawCoursesResponse = await withTimeout(
+            fetchDashboardFromCoursesBackend(),
+            DROPDOWN_TIMEOUT_MS,
+            'Courses dashboard request timed out',
+          );
           if (rawCoursesResponse?.stats || rawCoursesResponse?.courses) {
             dashboardSource = 'courses';
-            console.log(
-              '[DASHBOARD.JS] Tracking dashboard loaded; Railway courses enrichment available',
-            );
           }
         } catch (coursesError) {
           console.warn(
@@ -751,39 +866,53 @@ const runDashboardInit = () => {
         }
       } else {
         try {
-          rawCoursesResponse = await fetchDashboardFromCoursesBackend();
-          dashboardPayload =
-            transformCoursesDashboardToDashboard(rawCoursesResponse);
+          rawCoursesResponse = await withTimeout(
+            fetchDashboardFromCoursesBackend(),
+            DROPDOWN_TIMEOUT_MS,
+            'Courses dashboard request timed out',
+          );
           dashboardSource = 'courses';
-          console.log('[DASHBOARD.JS] Using new courses backend');
         } catch (coursesError) {
           console.warn(
             '[DASHBOARD.JS] Courses backend unavailable, falling back to tracking:',
             coursesError.message,
           );
-          const courseId = selectedCourseId;
-          let path = '/v1/tracking/dashboard/student';
-          if (courseId) {
-            path += `?courseId=${encodeURIComponent(courseId)}`;
+          if (!normalizedTracking) {
+            try {
+              rawTrackingResponse = await fetchTrackingDashboard(
+                requestJson,
+                courseId,
+              );
+              normalizedTracking = normalizeTrackingPayload(rawTrackingResponse);
+            } catch (retryError) {
+              console.warn(
+                '[DASHBOARD.JS] Tracking retry failed:',
+                retryError.message,
+              );
+            }
           }
-          dashboardPayload = await requestJson(path, { method: 'GET' });
         }
       }
 
-      // Process the dashboardPayload to build dashboardData
-      let courseCount = 0;
+      const trackingProjects = normalizedTracking?.projects || [];
+
+      let courseCount =
+        dashboardSource === 'courses' && rawCoursesResponse?.courses
+          ? rawCoursesResponse.courses.length
+          : trackingProjects.length;
+
       let totalMilestones = 0;
       let approvedMilestones = 0;
-
-      const projects = dashboardPayload.projects || [];
-
-      courseCount = projects.length;
-
-      projects.forEach((project) => {
+      trackingProjects.forEach(function (project) {
         const stats = project.stats || {};
         totalMilestones += stats.total || 0;
         approvedMilestones += stats.approved || 0;
       });
+
+      const overallProgress =
+        dashboardSource === 'courses' && rawCoursesResponse?.stats
+          ? rawCoursesResponse.stats.overallProgress || 0
+          : 0;
 
       const statsArray = [
         {
@@ -806,7 +935,7 @@ const runDashboardInit = () => {
         },
         {
           label: 'Study Streak',
-          value: '12 days',
+          value: '0 days',
           icon: 'fa-regular fa-clock',
           color: 'blue',
         },
@@ -815,7 +944,7 @@ const runDashboardInit = () => {
             dashboardSource === 'courses' ? 'Overall Progress' : 'Total GPA',
           value:
             dashboardSource === 'courses'
-              ? `${dashboardPayload.stats?.overallProgress || 0}%`
+              ? `${overallProgress}%`
               : savedGPA
                 ? `${savedGPA}/4.0`
                 : 'Calculate',
@@ -826,71 +955,14 @@ const runDashboardInit = () => {
         },
       ];
 
-      // Flatten milestones from all projects and take first 3
-      const allMilestones = [];
-      projects.forEach((project) => {
-        (project.milestones || []).forEach((milestone) => {
-          allMilestones.push(milestone);
-        });
-      });
-
-      const dashboardMilestones = allMilestones.slice(0, 3).map((milestone) => {
-        let statusLabel = milestone.status || 'pending';
-        let statusColor = '#6b7280';
-        let completedPercent = 0;
-
-        switch (statusLabel) {
-          case 'approved':
-          case 'complete':
-            statusLabel = 'Complete';
-            statusColor = '#10b981';
-            completedPercent = 100;
-            break;
-          case 'in_review':
-            statusLabel = 'In Review';
-            statusColor = '#10b981';
-            completedPercent = 0;
-            break;
-          case 'needs_changes':
-            statusLabel = 'Needs Changes';
-            statusColor = '#f97316';
-            completedPercent = 0;
-            break;
-          case 'pending':
-          default:
-            statusLabel = 'Pending';
-            statusColor = '#6b7280';
-            completedPercent = 0;
-            break;
-        }
-
-        return {
-          title: milestone.title || 'Milestone',
-          completed: completedPercent,
-          status: statusLabel,
-          color: statusColor,
-          due: milestone.dueLabel || 'TBD',
-        };
-      });
+      const dashboardMilestones = buildMilestonesForRender(trackingProjects);
+      const deadlinesArray = mapDeadlines(rawTrackingResponse);
 
       var progressArray = [];
       if (dashboardSource === 'courses' && rawCoursesResponse) {
         var courseList = Array.isArray(rawCoursesResponse.courses)
           ? rawCoursesResponse.courses
           : [];
-        console.log(
-          '[DASHBOARD.JS] Dashboard courses:',
-          JSON.stringify(
-            courseList.map(function (c) {
-              return {
-                id: c._id || c.id,
-                title: c.title,
-                progress: c.progressPercentage || c.progress,
-                level: c.level,
-              };
-            }),
-          ),
-        );
         if (courseList.length > 0) {
           var svc = window.NibrasServices?.coursesService;
           var coursesWithProgress = await Promise.all(
@@ -900,7 +972,11 @@ const runDashboardInit = () => {
               var bid = c._id || c.id || '';
               if (svc && typeof svc.getProgress === 'function' && bid) {
                 try {
-                  var r = await svc.getProgress(bid);
+                  var r = await withTimeout(
+                    svc.getProgress(bid),
+                    DROPDOWN_TIMEOUT_MS,
+                    'Course progress request timed out',
+                  );
                   var pd = r?.data || r || {};
                   var apiPct = Number.isFinite(Number(pd.percentage))
                     ? Number(pd.percentage)
@@ -930,7 +1006,7 @@ const runDashboardInit = () => {
         milestones: dashboardMilestones,
         activities: [],
         progress: progressArray,
-        deadlines: [],
+        deadlines: deadlinesArray,
         achievements: [],
       };
 

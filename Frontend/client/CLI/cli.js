@@ -64,6 +64,9 @@ window.NibrasReact.run(function () {
   }
 
   loadProgress();
+  if (window.NibrasCli?.hydrateGuidePage) {
+    window.NibrasCli.hydrateGuidePage();
+  }
 });
 
 function toggleStep(num) {

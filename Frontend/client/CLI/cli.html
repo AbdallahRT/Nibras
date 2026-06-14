@@ -175,7 +175,7 @@ git --version</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy<
                 <div class="cli-step" data-step="2">
                     <div class="step-head" onclick="toggleStep(2)"><span class="step-num">02</span><div class="step-info"><h3>Install the CLI</h3><p>Install the current CLI release globally</p></div><span class="step-check" id="check-2"><i class="fa-regular fa-circle"></i></span></div>
                     <div class="step-body" id="body-2">
-                        <p>Install the CLI directly from the GitHub release. This makes the <code>nibras</code> command available everywhere in your terminal.</p>
+                        <p>Install <code>@nibras/cli</code> globally via npm or the release install script. This makes the <code>nibras</code> command available everywhere in your terminal.</p>
 
                         <div class="note-box" style="background:rgba(59,130,246,0.1);border-left:4px solid #3b82f6;padding:0.75rem 1rem;border-radius:8px;margin-bottom:12px;font-size:0.85rem;color:var(--text-secondary);">
                             <strong>Local full-service repo:</strong> from the Nibras monorepo root run
@@ -185,28 +185,37 @@ git --version</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy<
                         <div class="os-tabs"><button class="os-tab active" onclick="switchOs('macos', this)">macOS</button><button class="os-tab" onclick="switchOs('linux', this)">Linux</button><button class="os-tab" onclick="switchOs('windows', this)">Windows</button></div>
 
                         <div class="os-content macos">
-                            <div class="code-block"><pre><code>npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                            <p style="font-size:0.9rem;margin-bottom:8px;"><strong>Option A — install script (recommended)</strong></p>
+                            <div class="code-block"><pre><code data-cli-install-script="linux">curl -fsSL "https://github.com/EpitomeZied/nibras/releases/download/v2.0.0/install.sh" | bash</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                            <p style="font-size:0.9rem;margin:12px 0 8px;"><strong>Option B — npm</strong></p>
+                            <div class="code-block"><pre><code data-cli-install>npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             <p style="font-size:0.85rem;color:var(--text-secondary);margin-top:12px;">If the install fails with <code>EEXIST</code> or <code>ENOTDIR</code>, you have a stale global link. Remove it and reinstall:</p>
                             <div class="code-block"><pre><code>npm uninstall -g nibras @nibras/cli || true
 rm -f "$(npm config get prefix)/bin/nibras"
 rm -rf "$(npm root -g)/nibras" "$(npm root -g)/@nibras/cli"
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                         </div>
                         <div class="os-content linux" style="display:none;">
-                            <div class="code-block"><pre><code>npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                            <p style="font-size:0.9rem;margin-bottom:8px;"><strong>Option A — install script (recommended)</strong></p>
+                            <div class="code-block"><pre><code data-cli-install-script="linux">curl -fsSL "https://github.com/EpitomeZied/nibras/releases/download/v2.0.0/install.sh" | bash</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                            <p style="font-size:0.9rem;margin:12px 0 8px;"><strong>Option B — npm</strong></p>
+                            <div class="code-block"><pre><code data-cli-install>npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             <p style="font-size:0.85rem;color:var(--text-secondary);margin-top:12px;">If the install fails with <code>EEXIST</code> or <code>ENOTDIR</code>, you have a stale global link. Remove it and reinstall:</p>
                             <div class="code-block"><pre><code>npm uninstall -g nibras @nibras/cli || true
 rm -f "$(npm config get prefix)/bin/nibras"
 rm -rf "$(npm root -g)/nibras" "$(npm root -g)/@nibras/cli"
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                         </div>
                         <div class="os-content windows" style="display:none;">
                             <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:10px;">Run this in the <strong>same Git Bash window</strong> you verified above. If <code>nibras</code> is not recognized afterwards, close the terminal and open a fresh one before troubleshooting anything else.</p>
-                            <div class="code-block"><pre><code>npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                            <p style="font-size:0.9rem;margin-bottom:8px;"><strong>Option A — PowerShell install script</strong></p>
+                            <div class="code-block"><pre><code data-cli-install-script="windows">irm "https://github.com/EpitomeZied/nibras/releases/download/v2.0.0/install.ps1" | iex</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                            <p style="font-size:0.9rem;margin:12px 0 8px;"><strong>Option B — npm (Git Bash)</strong></p>
+                            <div class="code-block"><pre><code data-cli-install>npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                         </div>
 
-                        <p>Verify: <code>nibras --version</code> should start with <code>v1.0.2</code>, for example <code>v1.0.2</code>.</p>
-                        <p style="margin-top:10px;font-size:0.85rem;color:var(--text-secondary);">To reinstall later: <code>nibras update --version v1.0.2</code>. To remove the CLI: <code>nibras uninstall</code>.<br>Use <code>nibras update --check</code> to compare your installed version against the latest GitHub release before updating.</p>
+                        <p>Verify: <code>nibras --version</code> should start with <code data-cli-version>v2.0.0</code>.</p>
+                        <p style="margin-top:10px;font-size:0.85rem;color:var(--text-secondary);">To reinstall later: <code>nibras update --version v2.0.0</code>. To remove the CLI: <code>nibras uninstall</code>.<br>Use <code>nibras update --check</code> to compare your installed version against the latest GitHub release before updating.</p>
 
                         <div class="os-content windows" style="display:none;margin-top:12px;">
                             <div class="note-box" style="background:rgba(220,38,38,0.1);border-left:4px solid #ef4444;padding:0.75rem 1rem;border-radius:8px;font-size:0.85rem;color:var(--text-secondary);">
@@ -220,12 +229,12 @@ Remove-Item "$((npm config get prefix).Trim())\nibras.cmd" -Force -ErrorAction S
 Remove-Item "$((npm config get prefix).Trim())\nibras" -Force -ErrorAction SilentlyContinue
 Remove-Item "$((npm root -g).Trim())\nibras" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$((npm root -g).Trim())\@nibras\cli" -Recurse -Force -ErrorAction SilentlyContinue
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                                 <div class="code-block cleanup-shell gitbash" style="display:none;margin-top:8px;"><pre><code>npm uninstall -g nibras @nibras/cli || true
 prefix="$(npm config get prefix)"
 rm -f "$prefix/nibras" "$prefix/nibras.cmd"
 rm -rf "$(npm root -g)/nibras" "$(npm root -g)/@nibras/cli"
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             </div>
                         </div>
                         <button class="btn-mark-done" onclick="markStep(2)">Mark as complete</button>
@@ -245,7 +254,7 @@ npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1
                             <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:10px;">If the browser does not open, rerun with <code>nibras login --api-base-url https://nibras-api.fly.dev --no-open</code> and paste the printed URL into any browser manually.</p>
                         </div>
 
-                        <div class="code-block"><pre><code>nibras login --api-base-url https://nibras-api.fly.dev</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                        <div class="code-block"><pre><code class="cli-api-login-cmd">nibras login --api-base-url https://nibras-api.fly.dev</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
 
                         <div class="term-output" style="background:#1e1e1e;border-radius:8px;padding:1rem;margin:12px 0;font-family:monospace;font-size:0.8rem;color:#ccc;line-height:1.6;"><pre style="margin:0;white-space:pre-wrap;">
 ╭──────────────────────────────────────────────────────────────╮
@@ -414,7 +423,7 @@ nibras whoami  # show signed-in user and linked GitHub account</code></pre><butt
                         </div>
 
                         <p style="font-weight:600;margin-bottom:8px;">Student quick-start</p>
-                        <div class="code-block"><pre><code>npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz
+                        <div class="code-block"><pre><code>npm install -g @nibras/cli@2.0.0
 nibras --version
 nibras login --api-base-url https://nibras-api.fly.dev
 nibras setup --project cs101/assignment-1
@@ -429,7 +438,7 @@ Hi everyone,
 To submit your assignments, you'll use the Nibras CLI tool. Here's how:
 
 1. Install the CLI:
-   npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz
+   npm install -g @nibras/cli@2.0.0
 
 2. Log in with your GitHub account:
    nibras login --api-base-url https://nibras-api.fly.dev
@@ -479,7 +488,7 @@ export PATH="$(npm config get prefix)/bin:$PATH"
                                 <div class="code-block" style="margin-top:8px;"><pre><code># Recommended: switch to nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.zshrc && nvm install --lts && nvm use --lts
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz
+npm install -g @nibras/cli@2.0.0
 
 # Alternative: fix the npm global prefix without sudo
 mkdir -p ~/.npm-global && npm config set prefix '~/.npm-global'
@@ -491,12 +500,12 @@ export PATH="$HOME/.npm-global/bin:$PATH"</code></pre><button class="copy-btn" o
                                 <div class="code-block" style="margin-top:8px;"><pre><code>npm uninstall -g nibras @nibras/cli || true
 rm -f "$(npm config get prefix)/bin/nibras"
 rm -rf "$(npm root -g)/nibras" "$(npm root -g)/@nibras/cli"
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             </div>
                             <div class="troubleshoot-item">
                                 <strong>"AUTH_REQUIRED" or "INVALID_SESSION"</strong>
                                 <p>Session token expired, revoked, or wrong API URL saved.</p>
-                                <div class="code-block" style="margin-top:8px;"><pre><code>nibras login --api-base-url https://nibras-api.fly.dev</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                                <div class="code-block" style="margin-top:8px;"><pre><code class="cli-api-login-cmd">nibras login --api-base-url https://nibras-api.fly.dev</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             </div>
                             <div class="troubleshoot-item">
                                 <strong>"remote: Repository not found" or push rejected</strong>
@@ -529,7 +538,7 @@ export PATH="$(npm config get prefix)/bin:$PATH"
                                 <div class="code-block" style="margin-top:8px;"><pre><code># Recommended: switch to nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.bashrc && nvm install --lts && nvm use --lts
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz
+npm install -g @nibras/cli@2.0.0
 
 # Alternative: fix the npm global prefix without sudo
 mkdir -p ~/.npm-global && npm config set prefix '~/.npm-global'
@@ -541,12 +550,12 @@ export PATH="$HOME/.npm-global/bin:$PATH"</code></pre><button class="copy-btn" o
                                 <div class="code-block" style="margin-top:8px;"><pre><code>npm uninstall -g nibras @nibras/cli || true
 rm -f "$(npm config get prefix)/bin/nibras"
 rm -rf "$(npm root -g)/nibras" "$(npm root -g)/@nibras/cli"
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             </div>
                             <div class="troubleshoot-item">
                                 <strong>"AUTH_REQUIRED" or "INVALID_SESSION"</strong>
                                 <p>Session token expired, revoked, or wrong API URL saved.</p>
-                                <div class="code-block" style="margin-top:8px;"><pre><code>nibras login --api-base-url https://nibras-api.fly.dev</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                                <div class="code-block" style="margin-top:8px;"><pre><code class="cli-api-login-cmd">nibras login --api-base-url https://nibras-api.fly.dev</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             </div>
                             <div class="troubleshoot-item">
                                 <strong>"remote: Repository not found" or push rejected</strong>
@@ -588,11 +597,11 @@ Remove-Item "$((npm config get prefix).Trim())\nibras.cmd" -Force -ErrorAction S
 Remove-Item "$((npm config get prefix).Trim())\nibras" -Force -ErrorAction SilentlyContinue
 Remove-Item "$((npm root -g).Trim())\nibras" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$((npm root -g).Trim())\@nibras\cli" -Recurse -Force -ErrorAction SilentlyContinue
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                                 <div class="code-block win-tb-shell gb" style="display:none;"><pre><code>npm uninstall -g nibras @nibras/cli || true
 rm -f "$(npm config get prefix)/bin/nibras"
 rm -rf "$(npm root -g)/nibras" "$(npm root -g)/@nibras/cli"
-npm install -g https://github.com/NibrasPlatform/nibras-cli/releases/download/v1.0.2/nibras-cli-1.0.2.tgz</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+npm install -g @nibras/cli@2.0.0</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             </div>
                             <div class="troubleshoot-item">
                                 <strong>"execution of scripts is disabled on this system"</strong>
@@ -604,7 +613,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code></pre
                             <div class="troubleshoot-item">
                                 <strong>"AUTH_REQUIRED" or "INVALID_SESSION"</strong>
                                 <p>Session token expired, revoked, or wrong API URL saved.</p>
-                                <div class="code-block" style="margin-top:8px;"><pre><code>nibras login --api-base-url https://nibras-api.fly.dev</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+                                <div class="code-block" style="margin-top:8px;"><pre><code class="cli-api-login-cmd">nibras login --api-base-url https://nibras-api.fly.dev</code></pre><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
                             </div>
                             <div class="troubleshoot-item">
                                 <strong>"remote: Repository not found" or push rejected</strong>
@@ -628,7 +637,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code></pre
                         </div>
 
                         <div class="note-box" style="background:rgba(59,130,246,0.1);border-left:4px solid var(--accent-blue);padding:0.75rem 1rem;border-radius:8px;font-size:0.85rem;color:var(--text-secondary);margin-top:16px;">
-                            Still stuck? Run <code>nibras ping</code>, copy the full output, and share it with your instructor or open an issue at <strong>github.com/nibras-platform/nibras-cli</strong>.
+                            Still stuck? Run <code>nibras ping</code>, copy the full output, and share it with your instructor or open an issue at <strong>github.com/EpitomeZied/nibras</strong>.
                         </div>
                         <button class="btn-mark-done" onclick="markStep(10)">Mark as complete</button>
                     </div>
@@ -654,6 +663,9 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code></pre
                 <h4 style="margin:1.5rem 0 12px;font-size:1rem;">Session and diagnostics</h4>
                 <div class="ref-item"><div class="ref-cmd">nibras whoami</div><div class="ref-desc">Show the signed-in user and linked GitHub account.</div></div>
                 <div class="ref-item"><div class="ref-cmd">nibras ping</div><div class="ref-desc">Show API, auth, GitHub, GitHub App, and project status. Inside a project, it also reports the project key and origin remote.</div></div>
+                <div class="ref-item"><div class="ref-cmd">nibras doctor</div><div class="ref-desc">Run local environment and connectivity checks.</div></div>
+                <div class="ref-item"><div class="ref-cmd">nibras config</div><div class="ref-desc">Show or update CLI config (<code>path</code>, <code>get</code>, <code>set</code>).</div></div>
+                <div class="ref-item"><div class="ref-cmd">nibras milestones</div><div class="ref-desc">List milestones for the current project or a given project key.</div></div>
                 <div class="ref-item"><div class="ref-cmd">nibras logout</div><div class="ref-desc">Clear the local session.</div></div>
 
                 <h4 style="margin:1.5rem 0 12px;font-size:1rem;">Install lifecycle</h4>
@@ -673,6 +685,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code></pre
     <script src="../config.js"></script>
     <script src="../services/api.js"></script>
     <script src="../react-bootstrap.js"></script>
+    <script src="../cli-shared.js?v=20260622"></script>
     <script src="./cli.js"></script>
     <script src="../services/gamification-ui.js"></script>
     <script>

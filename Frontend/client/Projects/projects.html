@@ -76,19 +76,22 @@
                 <select id="course-select" style="flex:1;min-width:200px;padding:0.8rem;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:0.85rem;font-weight:500;">
                     <option value="">Loading courses...</option>
                 </select>
+                <button class="btn btn-outline btn-sm" type="button" onclick="openCliHelpModal()" style="white-space:nowrap;display:inline-flex;align-items:center;gap:6px;">
+                    <i class="fa-solid fa-terminal"></i> CLI Help
+                </button>
                 <span class="available-count" id="available-count"></span>
             </div>
 
             <!-- PROJECT HERO SECTION -->
             <section class="project-hero" id="projects-hero" style="display:none">
                 <div class="hero-text">
-                    <span class="course-code" id="hero-course-code">CS 106A · YEAR 1 · FRESHMAN</span>
-                    <h1 id="hero-title">Programming Methodology</h1>
+                    <span class="course-code" id="hero-course-code"></span>
+                    <h1 id="hero-title">Select a course</h1>
                     <p id="hero-subtitle">Track milestones, submit work, and monitor your progress.</p>
                 </div>
                 <div class="hero-stats-card">
                     <div class="quick-stats">
-                        <div class="stat-item"><strong id="stat-sections">0</strong><span>SECTIONS</span></div>
+                        <div class="stat-item"><strong id="stat-sections">0</strong><span>MILESTONES</span></div>
                         <div class="stat-item"><strong id="stat-completed">0</strong><span>COMPLETED</span></div>
                         <div class="stat-item accent"><strong id="stat-complete">0%</strong><span>COMPLETE</span></div>
                     </div>
@@ -98,10 +101,10 @@
             <!-- OVERALL PROGRESS BAR -->
             <div class="overall-progress-container" id="progress-container" style="display:none">
                 <div class="progress-header">
-                    <span id="progress-title">CS 106A — Programming Methodology</span>
+                    <span id="progress-title">Select a course</span>
                     <div class="progress-tags">
-                        <span class="tag-gray" id="progress-level">Freshman</span>
-                        <span class="tag-outline" id="progress-status">Published</span>
+                        <span class="tag-gray" id="progress-level">—</span>
+                        <span class="tag-outline" id="progress-status">—</span>
                         <span class="progress-pct" id="progress-pct">0%</span>
                     </div>
                 </div>
@@ -116,11 +119,11 @@
                 <div class="grid-left">
                     <!-- Intro Card -->
                     <div class="project-card" id="intro-card">
-                        <span class="badge-published" id="project-badge">PUBLISHED</span>
-                        <p class="project-desc" id="project-desc">Introduction to programming using Python. Covers variables, control flow, functions, and object-oriented programming. The entry point to the Stanford CS curriculum.</p>
+                        <span class="badge-published" id="project-badge">—</span>
+                        <p class="project-desc" id="project-desc">Choose a course to view project details and milestones.</p>
                         <div class="project-meta" id="project-meta">
-                            <span class="meta-pill">WEIGHT <strong id="meta-weight">100 pts rubric</strong></span>
-                            <span class="meta-pill">TYPE <strong id="meta-type">Individual</strong></span>
+                            <span class="meta-pill">WEIGHT <strong id="meta-weight">—</strong></span>
+                            <span class="meta-pill">TYPE <strong id="meta-type">—</strong></span>
                         </div>
                     </div>
 
@@ -223,6 +226,9 @@
                         </div>
                     </div>
 
+                    <!-- CLI Quickstart -->
+                    <div class="project-card cli-quickstart" id="cli-quickstart-card" style="display:none"></div>
+
                     <!-- Grading Breakdown -->
                     <div class="project-card">
                         <h3>Grading Breakdown</h3>
@@ -294,6 +300,89 @@
         </div>
     </main>
 
+    <!-- CLI Help Modal -->
+    <div id="cliHelpModal" class="modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background-color: var(--bg-primary); margin: 5% auto; padding: 25px; border-radius: 12px; max-width: 750px; max-height: 85vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 10px; color: var(--text-primary);">
+                    <i class="fa-solid fa-terminal" style="color: var(--accent-blue);"></i>
+                    Nibras CLI Guide
+                </h2>
+                <button onclick="closeCliHelpModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-secondary);">&times;</button>
+            </div>
+
+            <div id="cli-status-container" style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 8px; border-left: 4px solid var(--accent-blue);">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div id="cli-status-icon" style="width:12px;height:12px;border-radius:50%;background:#6b7280;"></div>
+                    <span id="cli-status-text" style="color:var(--text-secondary);font-size:14px;">Checking connection...</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+                <div style="flex:1;min-width:200px;">
+                    <label style="display:block;margin-bottom:5px;color:var(--text-primary);font-weight:500;font-size:14px;">Course</label>
+                    <select id="cli-course-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
+                        <option value="">Loading courses...</option>
+                    </select>
+                </div>
+                <div style="flex:1;min-width:200px;">
+                    <label style="display:block;margin-bottom:5px;color:var(--text-primary);font-weight:500;font-size:14px;">Project</label>
+                    <select id="cli-project-select" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-primary);font-size:14px;">
+                        <option value="">Select a project...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="cli-commands-container">
+                <div style="margin-bottom:15px;">
+                    <h3 style="margin-bottom:10px;color:var(--text-primary);font-size:15px;">1. Install the CLI</h3>
+                    <div id="cli-install-box" style="background:#1e1e1e;padding:12px 15px;border-radius:8px;font-family:monospace;position:relative;">
+                        <button onclick="copyCliModalText(window.NibrasCli?.getInstallCommand?.() || 'npm install -g @nibras/cli@2.0.0')" style="position:absolute;top:8px;right:10px;padding:4px 10px;font-size:11px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;">Copy</button>
+                        <code id="cli-install-command" style="color:#4fc3f7;font-size:14px;">npm install -g @nibras/cli@2.0.0</code>
+                    </div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <h3 style="margin-bottom:10px;color:var(--text-primary);font-size:15px;">2. Login</h3>
+                    <div style="background:#1e1e1e;padding:12px 15px;border-radius:8px;font-family:monospace;position:relative;">
+                        <button onclick="copyCliModalText(document.getElementById('cli-login-command')?.textContent || '')" style="position:absolute;top:8px;right:10px;padding:4px 10px;font-size:11px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;">Copy</button>
+                        <code id="cli-login-command" style="color:#4fc3f7;font-size:14px;">nibras login --api-base-url {url}</code>
+                    </div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <h3 style="margin-bottom:10px;color:var(--text-primary);font-size:15px;">3. Setup Project</h3>
+                    <div style="background:#1e1e1e;padding:12px 15px;border-radius:8px;font-family:monospace;position:relative;">
+                        <button onclick="copyCliModalText(document.getElementById('cli-setup-command')?.textContent || '')" style="position:absolute;top:8px;right:10px;padding:4px 10px;font-size:11px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;">Copy</button>
+                        <code id="cli-setup-command" style="color:#4fc3f7;font-size:14px;">nibras setup --project ...</code>
+                    </div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <h3 style="margin-bottom:10px;color:var(--text-primary);font-size:15px;">4. Test &amp; Submit</h3>
+                    <div style="background:#1e1e1e;padding:12px 15px;border-radius:8px;font-family:monospace;position:relative;">
+                        <button onclick="copyCliModalText('nibras test && nibras submit')" style="position:absolute;top:8px;right:10px;padding:4px 10px;font-size:11px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;">Copy</button>
+                        <code style="color:#4fc3f7;font-size:14px;">nibras test && nibras submit</code>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cli-actions-row" style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" type="button" data-cli-action="link-github" style="padding:8px 16px;font-size:13px;">
+                    <i class="fa-brands fa-github"></i> Link GitHub
+                </button>
+                <button class="btn btn-outline btn-sm" type="button" data-cli-action="check-github" style="padding:8px 16px;font-size:13px;">
+                    <i class="fa-solid fa-circle-check"></i> Verify
+                </button>
+                <button class="btn btn-outline btn-sm" type="button" data-cli-action="ping-api" style="padding:8px 16px;font-size:13px;">
+                    <i class="fa-solid fa-plug"></i> Ping API
+                </button>
+                <span id="cli-verify-result" style="color:var(--text-secondary);font-size:13px;align-self:center;"></span>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button onclick="closeCliHelpModal()" class="btn btn-primary" style="padding: 12px 30px;">Got It!</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Submission Modal -->
     <div class="modal-overlay" id="submissionModal" role="dialog" aria-modal="true" aria-hidden="true">
         <div class="modal-content">
@@ -338,11 +427,11 @@
     <script src="../config.js"></script>
     <script src="../services/api.js"></script>
     <script src="../react-bootstrap.js"></script>
-    <script src="../Courses/courseData.js?v=20260613"></script>
-    <script src="../Courses/Projects/projectsApi.js"></script>
-    <script src="./projects.js"></script>
+    <script src="../Courses/courseData.js?v=20260622"></script>
+    <script src="../Courses/Projects/projectsApi.js?v=20260622"></script>
+    <script src="../cli-shared.js?v=20260622"></script>
+    <script src="./projects.js?v=20260622"></script>
     <script src="../services/gamification-ui.js"></script>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
     (function() {
         try {

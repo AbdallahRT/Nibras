@@ -28,6 +28,14 @@ const onboardingHelperPath = path.join(
 );
 const studentGuidePath = path.join(repoRoot, 'docs', 'student-guide.md');
 const packageJsonPath = path.join(repoRoot, 'package.json');
+const cliPackageJsonPath = path.join(repoRoot, 'apps', 'cli', 'package.json');
+const cliGuidePath = path.join(
+  repoRoot,
+  'Frontend',
+  'client',
+  'CLI',
+  'cli.html',
+);
 
 function runCli(args) {
   return execFileSync(
@@ -137,4 +145,21 @@ test('student guide removes stale CLI instructions', () => {
   assert.match(studentGuide, /nibras ping/);
   assert.match(studentGuide, /manifest-configured/);
   assert.match(studentGuide, /submission still continues/i);
+});
+
+test('frontend CLI guide documents the v2 package install flow', () => {
+  const cliPkg = JSON.parse(fs.readFileSync(cliPackageJsonPath, 'utf8'));
+  const cliGuide = fs.readFileSync(cliGuidePath, 'utf8');
+  const documentedPackageInstall = `npm install -g @nibras/cli@${cliPkg.version}`;
+
+  assert.match(
+    cliGuide,
+    new RegExp(documentedPackageInstall.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+  );
+  assert.match(cliGuide, /nibras setup --project/);
+  assert.match(cliGuide, /nibras login --api-base-url/);
+  assert.doesNotMatch(cliGuide, /v1\.0\.2/);
+  assert.doesNotMatch(cliGuide, /NibrasPlatform\/nibras-cli/);
+  assert.match(cliGuide, /nibras doctor/);
+  assert.match(cliGuide, /EpitomeZied\/nibras/);
 });

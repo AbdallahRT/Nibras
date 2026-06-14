@@ -576,5 +576,5 @@
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   }
 
-  global.NibrasProjectsApi = { createClient };
+  global.NibrasProjectsApi = { createClient, normalizeDashboardPayload };
 })(window);

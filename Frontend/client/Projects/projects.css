@@ -505,6 +505,29 @@ body {
     box-shadow: var(--shadow-sm);
     transform: translateY(-1px);
 }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+
+.cli-quickstart .section-desc { margin-bottom: 12px; color: var(--text-secondary); font-size: 0.9rem; }
+.cli-command-box {
+    background: #111827;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+}
+.cli-command {
+    color: #93c5fd;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+.cli-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
 
 .pulse-steps { display: flex; flex-direction: column; gap: 16px; }
 .pulse-step { display: flex; align-items: center; gap: 12px; opacity: 0.4; transition: opacity 0.3s; }
