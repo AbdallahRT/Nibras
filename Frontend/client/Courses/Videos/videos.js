@@ -1184,20 +1184,8 @@ function setupVideoControls(videoElement, lesson, videoItem) {
       captionsEnabled = !captionsEnabled;
       captionDisplay.style.display = captionsEnabled ? 'block' : 'none';
       captionBtn.style.opacity = captionsEnabled ? '1' : '0.8';
-    });
-
-    const demoCaption = {
-      startTime: 0,
-      endTime: 5,
-      text: 'Welcome to this video lesson!',
-    };
-    videoElement.addEventListener('timeupdate', () => {
-      if (!captionsEnabled || !videoElement.duration) return;
-      const time = videoElement.currentTime;
-      if (time >= demoCaption.startTime && time <= demoCaption.endTime) {
-        captionDisplay.textContent = demoCaption.text;
-        captionDisplay.classList.add('visible');
-      } else {
+      if (!captionsEnabled) {
+        captionDisplay.textContent = '';
         captionDisplay.classList.remove('visible');
       }
     });

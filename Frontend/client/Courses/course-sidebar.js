@@ -182,7 +182,9 @@
     if (courseTerm) {
       courseTerm.textContent = codeTitle + ' • ' + (overview.term || '');
     }
-    var headerSub = document.querySelector('.header-text p');
+    var headerSub =
+      document.getElementById('page-header-subtitle') ||
+      document.querySelector('.header-text p');
     if (headerSub) {
       headerSub.textContent = codeTitle + ' • ' + (overview.term || '');
     }
@@ -400,6 +402,7 @@
 
     var selectedCourse = window.NibrasCourses?.getSelectedCourse?.();
     if (selectedCourse) {
+      updateCourseMeta(selectedCourse);
       var runHydrate = function () {
         hydrateSidebarProgress(selectedCourse);
       };

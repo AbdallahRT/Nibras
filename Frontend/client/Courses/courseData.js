@@ -20,10 +20,7 @@
   ];
 
   const gradeWeights = [
-    { cat: 'Assignments', pct: '40%' },
-    { cat: 'Projects', pct: '30%' },
-    { cat: 'Quizzes', pct: '20%' },
-    { cat: 'Participation', pct: '10%' },
+    { cat: 'Assignments', pct: '—' },
   ];
 
   const youtubeIds = [
@@ -256,7 +253,7 @@
 
   function mapVideoToLessonItem(video, lessonId, lectureIndex, videoIndex) {
     const itemId = `${lessonId}-video-${videoIndex + 1}`;
-    const duration = `${10 + ((lectureIndex + videoIndex) % 50)}:00`;
+    const duration = '';
     const type = String(video?.type || 'youtube').toLowerCase();
 
     if (type === 'youtube') {
@@ -391,26 +388,15 @@
     });
   }
 
-  function buildAssignments(meta, completedAssignments, seed) {
-    const statuses = [
-      'graded',
-      'submitted',
-      'not_started',
-      'late',
-      'not_started',
-    ];
+  function buildAssignments(meta, _completedAssignments, seed) {
     const statusLabels = {
-      graded: 'Graded',
-      submitted: 'Submitted',
       not_started: 'Not Started',
-      late: 'Late',
     };
 
     return Array.from({ length: 5 }).map((_, index) => {
       const assignmentNumber = index + 1;
-      const status = statuses[index];
+      const status = 'not_started';
       const points = 15 + assignmentNumber * 5;
-      const score = status === 'graded' ? Math.max(10, points - 2) : null;
       const dueDay = 10 + seed + assignmentNumber * 3;
       return {
         id: `${meta.id}-assignment-${assignmentNumber}`,
@@ -419,16 +405,11 @@
         statusLabel: statusLabels[status],
         description: `Apply ${meta.topics[index % meta.topics.length]} concepts in ${meta.title}.`,
         points,
-        score,
+        score: null,
         dueDate: `Dec ${Math.min(dueDay, 29)}, 2024`,
         dueTime: '11:59 PM',
         type: assignmentNumber % 2 === 0 ? 'Quiz' : 'File Upload',
-        action:
-          score !== null
-            ? 'View Details'
-            : status === 'submitted'
-              ? 'View Submission'
-              : 'Submit',
+        action: 'Submit',
         milestoneId: `${meta.id}-milestone-${assignmentNumber}`,
         projectKey: `${meta.id}-project-${Math.min(assignmentNumber, 2)}`,
         page: './Assignments Content/AssignmentContent.html',
@@ -436,7 +417,7 @@
     });
   }
 
-  function buildGrades(meta, assignments, scoreBase) {
+  function buildGrades(meta, assignments) {
     const gradedItems = assignments.filter((item) => item.score !== null);
     const earnedPoints = gradedItems.reduce((sum, item) => sum + item.score, 0);
     const totalPoints =
@@ -446,7 +427,7 @@
     const overall =
       gradedItems.length > 0
         ? Math.max(0, Math.min(100, (earnedPoints / totalPoints) * 100))
-        : Math.max(0, Math.min(100, scoreBase || 0));
+        : 0;
     const totalCount = assignments.length;
     const gradedCount = gradedItems.length;
 
@@ -509,8 +490,10 @@
               ? 'Late Submission'
               : 'Pending',
       })),
-      scale: gradeScale,
-      weights: gradeWeights,
+      scale: [],
+      weights: assignments.length
+        ? [{ cat: 'Assignments', pct: '—' }]
+        : [],
     };
   }
 
@@ -524,13 +507,9 @@
         Math.round((progressPercent / 100) * lectureCount),
       ),
     );
-    const completedAssignments = Math.max(
-      0,
-      Math.min(5, Math.round((progressPercent / 100) * 5)),
-    );
+    const completedAssignments = 0;
     const term = meta.level || 'Course';
     const currentWeek = completedLectures > 0 ? completedLectures : 1;
-    const scoreBase = progressPercent > 0 ? 60 + progressPercent * 0.35 : 0;
     const assignments = buildAssignments(meta, completedAssignments, index);
     const lessons = (meta.lectures || []).length
       ? buildLessonsFromLectures(meta, completedLectures)
@@ -565,8 +544,8 @@
           completedLectures,
           totalLectures,
           percent: progressPercent,
-          avgScore: progressPercent > 0 ? `${Math.round(scoreBase)}%` : '0%',
-          assignmentsDone: `${completedAssignments}/5`,
+          avgScore: '—',
+          assignmentsDone: `0/${assignments.length}`,
         },
         instructor: {
           name: meta.code,
@@ -606,7 +585,7 @@
       assignmentDetail: {
         title: assignments[0].title,
         points: assignments[0].points,
-        scoreEarned: assignments[0].score || assignments[0].points - 2,
+        scoreEarned: 0,
         description: assignments[0].description,
         dueDate: assignments[0].dueDate,
         dueTime: assignments[0].dueTime,
@@ -614,28 +593,12 @@
         milestoneId: assignments[0].milestoneId,
         projectKey: assignments[0].projectKey,
         instructions: {
-          intro: `Complete the assignment using concepts from ${meta.topics[0]} and ${meta.topics[1]}.`,
-          points: [
-            `Implement a working solution for ${meta.topics[0]}`,
-            'Document design choices and assumptions',
-            'Include tests/examples to validate behavior',
-            'Submit organized files with clear naming',
-          ],
+          intro: assignments[0].description,
+          points: [],
         },
-        files: [
-          { name: `${meta.id}-requirements.pdf`, type: 'pdf' },
-          { name: `${meta.id}-starter-template.zip`, type: 'zip' },
-        ],
-        rubric: [
-          { criteria: 'Code Quality & Structure', percent: '40%' },
-          { criteria: 'Requirements Coverage', percent: '40%' },
-          { criteria: 'Documentation', percent: '20%' },
-        ],
-        feedback: {
-          comment: `Good progress in ${meta.title}. Improve edge-case handling around ${meta.topics[2]}.`,
-          grader: meta.instructor,
-          date: 'Dec 19, 2024, 3:42 PM',
-        },
+        files: [],
+        rubric: [],
+        feedback: null,
       },
       projects: {
         subtitle: `${meta.code}: ${meta.title} • ${term}`,
@@ -648,7 +611,7 @@
         secondaryProjectDescription: `Develop an individual showcase focused on ${meta.topics[3]}.`,
         groupWorkspaceTitle: `Group Workspace: ${meta.title} Applied Project`,
       },
-      grades: buildGrades(meta, assignments, scoreBase),
+      grades: buildGrades(meta, assignments),
     };
   }
 
@@ -1373,10 +1336,11 @@
   }
 
   function toAssignmentDetail(assignment, selectedCourse) {
+    const hasScore = assignment.score != null;
     return {
       title: assignment.title,
       points: assignment.points,
-      scoreEarned: assignment.score ?? 0,
+      scoreEarned: hasScore ? assignment.score : 0,
       description: assignment.description,
       dueDate: assignment.dueDate,
       dueTime: assignment.dueTime,
@@ -1384,27 +1348,18 @@
       milestoneId: assignment.milestoneId,
       projectKey: assignment.projectKey,
       instructions: {
-        intro: `Complete this assignment for ${selectedCourse.title}.`,
-        points: [
-          'Follow all assignment requirements listed above.',
-          'Submit clear and well-structured work.',
-          'Include notes for important design decisions.',
-        ],
+        intro: assignment.description || '',
+        points: [],
       },
       files: [],
-      rubric: [
-        { criteria: 'Correctness', percent: '50%' },
-        { criteria: 'Code Quality', percent: '30%' },
-        { criteria: 'Documentation', percent: '20%' },
-      ],
-      feedback: {
-        comment:
-          assignment.score !== null
-            ? 'Graded successfully.'
-            : 'No feedback yet.',
-        grader: selectedCourse.instructor,
-        date: 'Pending',
-      },
+      rubric: assignment.rubric || [],
+      feedback: hasScore
+        ? {
+            comment: assignment.feedbackComment || '',
+            grader: selectedCourse.instructor,
+            date: assignment.feedbackDate || '',
+          }
+        : null,
     };
   }
 

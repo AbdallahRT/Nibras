@@ -27,10 +27,7 @@ CORE = r"""(function () {
   ];
 
   const gradeWeights = [
-    { cat: 'Assignments', pct: '40%' },
-    { cat: 'Projects', pct: '30%' },
-    { cat: 'Quizzes', pct: '20%' },
-    { cat: 'Participation', pct: '10%' },
+    { cat: 'Assignments', pct: '—' },
   ];
 
   const youtubeIds = [
@@ -157,7 +154,7 @@ CORE = r"""(function () {
 
   function mapVideoToLessonItem(video, lessonId, lectureIndex, videoIndex) {
     const itemId = `${lessonId}-video-${videoIndex + 1}`;
-    const duration = `${10 + ((lectureIndex + videoIndex) % 50)}:00`;
+    const duration = '';
     const type = String(video?.type || 'youtube').toLowerCase();
 
     if (type === 'youtube') {
@@ -305,13 +302,9 @@ BUILD_COURSE = r"""
         Math.round((progressPercent / 100) * lectureCount),
       ),
     );
-    const completedAssignments = Math.max(
-      1,
-      Math.min(5, Math.round((progressPercent / 100) * 5)),
-    );
-    const term = 'Fall 2024';
-    const currentWeek = Math.max(2, Math.min(8, 2 + index));
-    const scoreBase = 60 + progressPercent * 0.35;
+    const completedAssignments = 0;
+    const term = meta.level || 'Course';
+    const currentWeek = Math.max(1, completedLectures);
     const assignments = buildAssignments(meta, completedAssignments, index);
     const lessons = (meta.lectures || []).length
       ? buildLessonsFromLectures(meta, completedLectures)
@@ -345,8 +338,8 @@ BUILD_COURSE = r"""
           completedLectures,
           totalLectures: lessons.length,
           percent: progressPercent,
-          avgScore: `${Math.round(scoreBase)}%`,
-          assignmentsDone: `${completedAssignments}/5`,
+          avgScore: '—',
+          assignmentsDone: `0/${assignments.length}`,
         },
         instructor: {
           name: meta.instructor,
@@ -470,7 +463,7 @@ BUILD_COURSE = r"""
       assignmentDetail: {
         title: assignments[0].title,
         points: assignments[0].points,
-        scoreEarned: assignments[0].score || assignments[0].points - 2,
+        scoreEarned: 0,
         description: assignments[0].description,
         dueDate: assignments[0].dueDate,
         dueTime: assignments[0].dueTime,
@@ -478,28 +471,12 @@ BUILD_COURSE = r"""
         milestoneId: assignments[0].milestoneId,
         projectKey: assignments[0].projectKey,
         instructions: {
-          intro: `Complete the assignment using concepts from ${meta.topics[0]} and ${meta.topics[1]}.`,
-          points: [
-            `Implement a working solution for ${meta.topics[0]}`,
-            'Document design choices and assumptions',
-            'Include tests/examples to validate behavior',
-            'Submit organized files with clear naming',
-          ],
+          intro: assignments[0].description,
+          points: [],
         },
-        files: [
-          { name: `${meta.id}-requirements.pdf`, type: 'pdf' },
-          { name: `${meta.id}-starter-template.zip`, type: 'zip' },
-        ],
-        rubric: [
-          { criteria: 'Code Quality & Structure', percent: '40%' },
-          { criteria: 'Requirements Coverage', percent: '40%' },
-          { criteria: 'Documentation', percent: '20%' },
-        ],
-        feedback: {
-          comment: `Good progress in ${meta.title}. Improve edge-case handling around ${meta.topics[2]}.`,
-          grader: meta.instructor,
-          date: 'Dec 19, 2024, 3:42 PM',
-        },
+        files: [],
+        rubric: [],
+        feedback: null,
       },
       projects: {
         subtitle: `${meta.code}: ${meta.title} • ${term}`,
@@ -512,7 +489,7 @@ BUILD_COURSE = r"""
         secondaryProjectDescription: `Develop an individual showcase focused on ${meta.topics[3]}.`,
         groupWorkspaceTitle: `Group Workspace: ${meta.title} Applied Project`,
       },
-      grades: buildGrades(meta, assignments, scoreBase),
+      grades: buildGrades(meta, assignments),
     };
   }
 

@@ -196,9 +196,15 @@ window.NibrasReact.run(() => {
     }
 
     const scaleContainer = document.getElementById('scale-container');
+    const scaleSection = document.getElementById('grading-scale-section');
     if (scaleContainer) {
       scaleContainer.innerHTML = '';
-      (data.scale || []).forEach((s) => {
+      const scaleItems = data.scale || [];
+      if (!scaleItems.length) {
+        if (scaleSection) scaleSection.style.display = 'none';
+      } else {
+        if (scaleSection) scaleSection.style.display = '';
+        scaleItems.forEach((s) => {
         let bgVar = `var(--scale-${s.color}-bg)`;
         let textVar = `var(--scale-${s.color}-text)`;
 
@@ -209,12 +215,19 @@ window.NibrasReact.run(() => {
                 </div>
             `;
       });
+      }
     }
 
     const wContainer = document.getElementById('weights-container');
+    const weightsSection = document.getElementById('grade-weights-section');
     if (wContainer) {
       wContainer.innerHTML = '';
-      (data.weights || []).forEach((w) => {
+      const weightItems = data.weights || [];
+      if (!weightItems.length) {
+        if (weightsSection) weightsSection.style.display = 'none';
+      } else {
+        if (weightsSection) weightsSection.style.display = '';
+        weightItems.forEach((w) => {
         wContainer.innerHTML += `
                 <div class="info-row">
                     <span>${w.cat}</span>
@@ -222,6 +235,7 @@ window.NibrasReact.run(() => {
                 </div>
             `;
       });
+      }
     }
   }
 });

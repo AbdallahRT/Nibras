@@ -308,6 +308,7 @@ window.NibrasReact.run(() => {
   }
 
   function buildAssignmentDetail(item) {
+    const hasScore = item.score != null;
     return {
       source: item.source || 'static',
       assignmentId: item.id || null,
@@ -318,7 +319,7 @@ window.NibrasReact.run(() => {
       assignmentType: item.assignmentType || null,
       title: item.title,
       points: item.points,
-      scoreEarned: item.score ?? 0,
+      scoreEarned: hasScore ? item.score : 0,
       description: item.description,
       dueDate: item.dueDate,
       dueTime: item.dueTime,
@@ -327,25 +328,18 @@ window.NibrasReact.run(() => {
       milestoneId: item.milestoneId || item.id || `ms-${item.title}`,
       projectKey: item.projectKey || `${courseId}-project-1`,
       instructions: {
-        intro: `Complete ${item.title} based on course requirements.`,
-        points: [
-          'Follow the assignment brief.',
-          'Attach all required files and references.',
-          'Ensure your submission is complete before deadline.',
-        ],
+        intro: item.description || '',
+        points: [],
       },
-      files: [],
-      rubric: [
-        { criteria: 'Correctness', percent: '50%' },
-        { criteria: 'Quality', percent: '30%' },
-        { criteria: 'Documentation', percent: '20%' },
-      ],
-      feedback: {
-        comment:
-          item.score !== null ? 'Graded successfully.' : 'No feedback yet.',
-        grader: selectedCourse.instructor,
-        date: 'Pending',
-      },
+      files: item.files || [],
+      rubric: item.rubric || [],
+      feedback: hasScore
+        ? {
+            comment: item.feedbackComment || '',
+            grader: item.grader || selectedCourse.instructor,
+            date: item.feedbackDate || '',
+          }
+        : null,
     };
   }
 

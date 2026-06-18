@@ -19,6 +19,32 @@ function setText(id, text) {
   if (el) el.textContent = text ?? '';
 }
 
+function renderGradingBreakdown(weights) {
+  const container = document.getElementById('grading-breakdown-container');
+  const section = document.getElementById('grading-breakdown-section');
+  if (!container) return;
+
+  const rows = (weights || []).filter(function (w) {
+    return w && w.cat;
+  });
+  if (!rows.length) {
+    if (section) section.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  if (section) section.style.display = '';
+  container.innerHTML = '';
+  rows.forEach(function (w) {
+    container.innerHTML +=
+      '<div class="grading-row"><span>' +
+      _safeHtml(w.cat) +
+      '</span><span style="font-weight: 600;">' +
+      _safeHtml(w.pct || '—') +
+      '</span></div>';
+  });
+}
+
 function showCourseLoadError(message) {
   setText('header-title', 'Unable to load course');
   setText(
@@ -80,6 +106,8 @@ function populateDashboard(data, selected) {
     text: `${completedLectures} of ${totalLectures} lectures completed`,
     percent: data.progress.percent,
   });
+
+  renderGradingBreakdown(selected?.grades?.weights);
 
   const announceContainer = document.getElementById('announcements-container');
   if (announceContainer) {
@@ -217,6 +245,9 @@ async function hydrateOverviewFromTracking(selectedCourse) {
             '</li>';
         });
       }
+    }
+    if (detail.syllabusJson?.gradingWeights?.length) {
+      renderGradingBreakdown(detail.syllabusJson.gradingWeights);
     }
   } catch (error) {
     console.warn(

@@ -169,7 +169,7 @@
           id: itemId,
           trackingVideoId: video.id,
           title: video.title || 'Video ' + (vi + 1),
-          duration: video.durationLabel || '10:00',
+          duration: video.durationLabel || '',
           sourceType: sourceType,
           youtube: youtube,
           html5: html5,
@@ -192,7 +192,7 @@
         id: lessonId,
         trackingSectionId: section.id,
         title: section.title || 'Lecture ' + (sectionIndex + 1),
-        duration: videoItems[0]?.duration || '10:00',
+        duration: videoItems[0]?.duration || '',
         locked: videoItems.some(function (v) {
           return v.locked;
         }),
@@ -384,19 +384,10 @@
       grades: allItems,
       scale: (selectedCourse?.grades?.scale || []).length
         ? selectedCourse.grades.scale
-        : [
-            { grade: 'A', range: '90-100%', color: 'a' },
-            { grade: 'B', range: '80-89%', color: 'b' },
-            { grade: 'C', range: '70-79%', color: 'c' },
-            { grade: 'D', range: '60-69%', color: 'd' },
-            { grade: 'F', range: 'Below 60%', color: 'f' },
-          ],
+        : [],
       weights: (selectedCourse?.grades?.weights || []).length
         ? selectedCourse.grades.weights
-        : [
-            { cat: 'Assignments', pct: '—' },
-            { cat: 'Projects', pct: '—' },
-          ],
+        : [],
     };
   }
 
