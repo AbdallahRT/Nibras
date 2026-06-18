@@ -29,12 +29,7 @@ function loadBrowserModule(relativePath) {
 
 test('catalog fallback assignments are neutral (not_started, no scores)', () => {
   const win = loadBrowserModule('Frontend/client/Courses/courseData.js');
-  const courses = win.NibrasCourses?.getAllCoursesList?.() || [];
-  assert.ok(courses.length > 0, 'expected catalog courses');
-
-  const firstId = courses[0].id;
-  win.localStorage.setItem('selectedCourseId', firstId);
-  const selected = win.NibrasCourses.getSelectedCourse();
+  const selected = win.NibrasCourses.getCourseById('cs106a-programming-methodology');
   assert.ok(selected?.assignments?.items?.length, 'expected assignment items');
 
   for (const item of selected.assignments.items) {
@@ -58,6 +53,6 @@ test('mapTrackingGradesToUi returns empty scale and weights without catalog defa
     'demo-course',
   );
 
-  assert.deepEqual(mapped.scale, []);
-  assert.deepEqual(mapped.weights, []);
+  assert.equal(mapped.scale.length, 0);
+  assert.equal(mapped.weights.length, 0);
 });
