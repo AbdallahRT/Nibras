@@ -440,51 +440,46 @@
     const gradedItems = assignments.filter((item) => item.score !== null);
     const earnedPoints = gradedItems.reduce((sum, item) => sum + item.score, 0);
     const totalPoints =
-      gradedItems.reduce((sum, item) => sum + item.points, 0) || 1;
-    const assignmentPercent = ((earnedPoints / totalPoints) * 100).toFixed(1);
-    const overall = Math.max(55, Math.min(98, scoreBase));
-    const classAverage = 82.5;
+      assignments.reduce((sum, item) => sum + item.points, 0) || 1;
+    const assignmentPercent =
+      totalPoints > 0 ? ((earnedPoints / totalPoints) * 100).toFixed(1) : '0.0';
+    const overall =
+      gradedItems.length > 0
+        ? Math.max(0, Math.min(100, (earnedPoints / totalPoints) * 100))
+        : Math.max(0, Math.min(100, scoreBase || 0));
+    const totalCount = assignments.length;
+    const gradedCount = gradedItems.length;
+
+    function letterFromPercent(pct) {
+      if (pct >= 90) return 'A';
+      if (pct >= 80) return 'B';
+      if (pct >= 70) return 'C';
+      if (pct >= 60) return 'D';
+      return 'F';
+    }
 
     return {
       stats: [
         {
           label: 'Overall Grade',
-          value: `${overall.toFixed(1)}%`,
-          sub: '',
+          value: totalCount > 0 ? `${overall.toFixed(1)}%` : '—',
+          sub: totalCount > 0 ? letterFromPercent(overall) : '',
           icon: 'fa-solid fa-award',
           type: 'primary',
-          extra:
-            overall >= 90
-              ? 'A'
-              : overall >= 80
-                ? 'B'
-                : overall >= 70
-                  ? 'C'
-                  : 'F',
-        },
-        {
-          label: 'Class Average',
-          value: `${classAverage}%`,
-          sub: 'B',
-          icon: 'fa-solid fa-bullseye',
-          type: 'standard',
-        },
-        {
-          label: 'vs Class Avg',
-          value: `${(overall - classAverage).toFixed(1)}%`,
-          sub: overall >= classAverage ? 'Above average' : 'Below average',
-          icon:
-            overall >= classAverage
-              ? 'fa-solid fa-arrow-trend-up'
-              : 'fa-solid fa-arrow-trend-down',
-          type: 'standard',
-          color: overall >= classAverage ? 'green' : 'red',
+          extra: totalCount > 0 ? letterFromPercent(overall) : '',
         },
         {
           label: 'Graded Items',
-          value: `${gradedItems.length}/8`,
+          value: `${gradedCount}/${totalCount}`,
           sub: 'Completed',
           icon: 'fa-regular fa-circle-check',
+          type: 'standard',
+        },
+        {
+          label: 'Assignment Points',
+          value: `${earnedPoints}/${totalPoints}`,
+          sub: `${assignmentPercent}%`,
+          icon: 'fa-regular fa-file-lines',
           type: 'standard',
         },
       ],
@@ -493,63 +488,27 @@
           category: 'Assignments',
           score: `${earnedPoints}/${totalPoints}`,
           percent: `${assignmentPercent}%`,
-          weight: '40% of final grade',
-          change: `+${(Number(assignmentPercent) * 0.4).toFixed(1)}% total`,
+          weight: 'Assignments',
+          change: '',
           color: '#f59e0b',
         },
-        {
-          category: 'Projects',
-          score: '0/0',
-          percent: '0.0%',
-          weight: '30% of final grade',
-          change: '+0.0% total',
-          color: '#374151',
-        },
-        {
-          category: 'Quizzes',
-          score: '54/60',
-          percent: '90.0%',
-          weight: '20% of final grade',
-          change: '+18.0% total',
-          color: '#10b981',
-        },
-        {
-          category: 'Participation',
-          score: '9/10',
-          percent: '90.0%',
-          weight: '10% of final grade',
-          change: '+9.0% total',
-          color: '#10b981',
-        },
       ],
-      grades: [
-        ...assignments.map((item) => ({
-          title: item.title,
-          type: item.type.toLowerCase().includes('quiz')
-            ? 'quiz'
-            : 'assignment',
-          date: `Due: ${item.dueDate}`,
-          score: item.score !== null ? `${item.score}/${item.points}` : null,
-          percent:
-            item.score !== null
-              ? `${((item.score / item.points) * 100).toFixed(1)}%`
-              : null,
-          status:
-            item.score !== null
-              ? 'Graded'
-              : item.status === 'late'
-                ? 'Late Submission'
-                : 'Pending',
-        })),
-        {
-          title: `Project: ${meta.title} Applied Build`,
-          type: 'project',
-          date: 'Due: Jan 15, 2025',
-          score: null,
-          percent: null,
-          status: 'Pending',
-        },
-      ],
+      grades: assignments.map((item) => ({
+        title: item.title,
+        type: item.type.toLowerCase().includes('quiz') ? 'quiz' : 'assignment',
+        date: `Due: ${item.dueDate}`,
+        score: item.score !== null ? `${item.score}/${item.points}` : null,
+        percent:
+          item.score !== null
+            ? `${((item.score / item.points) * 100).toFixed(1)}%`
+            : null,
+        status:
+          item.score !== null
+            ? 'Graded'
+            : item.status === 'late'
+              ? 'Late Submission'
+              : 'Pending',
+      })),
       scale: gradeScale,
       weights: gradeWeights,
     };

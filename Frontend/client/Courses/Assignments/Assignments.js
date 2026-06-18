@@ -8,16 +8,13 @@ window.NibrasReact.run(() => {
   let activeFilter = 'all';
   const assignmentsNotice = document.getElementById('assignments-api-notice');
   const sharedUiStates = window.NibrasShared?.uiStates || null;
-  var isInstructor = (function () {
-    try {
-      var u = JSON.parse(localStorage.getItem('user') || '{}');
-      return (
-        String(u?.role?.name || u?.role || '').toLowerCase() === 'instructor'
-      );
-    } catch (_) {
-      return false;
-    }
-  })();
+  var isInstructor = window.NibrasCourseSidebar?.isInstructor?.() || false;
+
+  window.NibrasCourseSidebar?.initCoursePageChrome?.({
+    activeKey: 'assignments',
+    pageRoot: 'assignments',
+    deferProgress: true,
+  });
 
   function resolveUiStateFromError(error, fallbackMessage) {
     if (sharedUiStates?.fromError) {
@@ -135,43 +132,7 @@ window.NibrasReact.run(() => {
     });
   }
 
-  // Update data-nav-link elements
-  const navLinks = [
-    { key: 'courseContent', path: '../Course Description/courseContent.html' },
-    { key: 'videos', path: '../Videos/videos.html' },
-    { key: 'assignments', path: './Assignments.html' },
-
-    { key: 'grades', path: '../Grades/grades.html' },
-  ];
-
-  navLinks.forEach(({ key, path }) => {
-    const el = document.querySelector(`[data-nav-link="${key}"]`);
-    if (el)
-      el.setAttribute(
-        'href',
-        window.NibrasCourses.withCourseId(path, courseId),
-      );
-  });
-
-  // Also update back button
-  const backBtn = document.querySelector('.back-btn');
-  if (backBtn)
-    backBtn.setAttribute(
-      'href',
-      window.NibrasCourses.withCourseId('../courses.html', courseId),
-    );
-
-  const termLabel = document.getElementById('course-term');
-  if (termLabel) {
-    termLabel.textContent = `${selectedCourse.code}: ${selectedCourse.title} • ${selectedCourse.overview.term}`;
-  }
-
-  const courseMetaTitle = document.querySelector('.course-meta h4');
-  const courseMetaSubtitle = document.querySelector('.course-meta span');
-  if (courseMetaTitle)
-    courseMetaTitle.textContent = `${selectedCourse.code}: ${selectedCourse.title}`;
-  if (courseMetaSubtitle)
-    courseMetaSubtitle.textContent = `${selectedCourse.overview.term} • Week ${selectedCourse.overview.currentWeek}`;
+  // Update data-nav-link elements — handled by course-sidebar
 
   // --- 4. RENDER UI ---
 
@@ -197,7 +158,8 @@ window.NibrasReact.run(() => {
   // Initial Render (All)
   syncStats();
   renderAssignments(activeFilter);
-  hydrateAssignmentsFromAdmin();
+  hydrateAssignments();
+  window.NibrasCourseSidebar?.hydrateSidebarProgress?.(selectedCourse);
 
   // Filter Click Logic
   filterBtns.forEach((btn) => {
@@ -347,10 +309,13 @@ window.NibrasReact.run(() => {
 
   function buildAssignmentDetail(item) {
     return {
+      source: item.source || 'static',
       assignmentId: item.id || null,
+      trackingAssignmentId: item.trackingAssignmentId || null,
       backendAssignmentId: item.backendAssignmentId || null,
       backendCourseId:
         selectedCourse.adminCourseId || selectedCourse.backendCourseId || null,
+      assignmentType: item.assignmentType || null,
       title: item.title,
       points: item.points,
       scoreEarned: item.score ?? 0,
@@ -358,7 +323,7 @@ window.NibrasReact.run(() => {
       dueDate: item.dueDate,
       dueTime: item.dueTime,
       submissionType: item.type,
-      status: item.status || 'not_started',
+      status: item.rawStatus || item.status || 'not_started',
       milestoneId: item.milestoneId || item.id || `ms-${item.title}`,
       projectKey: item.projectKey || `${courseId}-project-1`,
       instructions: {
@@ -384,32 +349,52 @@ window.NibrasReact.run(() => {
     };
   }
 
-  async function hydrateAssignmentsFromAdmin() {
-    const loadAssignments = window.NibrasCourses?.getAdminAssignmentsByCourseId;
-    if (typeof loadAssignments === 'function') {
-      if (!assignmentData.items || assignmentData.items.length === 0) {
-        setAssignmentsNotice(
-          'Loading assignments from the backend...',
-          'loading',
+  async function hydrateAssignments() {
+    var mappers = window.NibrasCourseMappers;
+    var trackingSvc = window.NibrasServices?.trackingCourseService;
+    var trackingId =
+      window.NibrasCourseSidebar?.resolveTrackingId?.(selectedCourse);
+    var lists = [];
+
+    if (!assignmentData.items?.length) {
+      setAssignmentsNotice('Loading assignments...', 'loading');
+    }
+
+    if (trackingSvc && trackingId && trackingSvc.listAssignments) {
+      try {
+        var trackingRes = await trackingSvc.listAssignments(trackingId);
+        var trackingItems = Array.isArray(trackingRes)
+          ? trackingRes
+          : trackingRes?.data || trackingRes?.items || [];
+        if (trackingItems.length && mappers?.mapTrackingAssignmentToCard) {
+          lists.push(
+            trackingItems.map(function (item) {
+              return mappers.mapTrackingAssignmentToCard(item, courseId);
+            }),
+          );
+        }
+      } catch (error) {
+        console.warn(
+          '[ASSIGNMENTS.JS] Tracking hydrate failed:',
+          error?.message || error,
         );
       }
+    }
+
+    var loadAdmin = window.NibrasCourses?.getAdminAssignmentsByCourseId;
+    if (typeof loadAdmin === 'function') {
       try {
-        const remoteAssignments = await loadAssignments(courseId);
-        if (
-          remoteAssignments &&
-          Array.isArray(remoteAssignments.items) &&
-          remoteAssignments.items.length > 0
-        ) {
-          assignmentData = JSON.parse(JSON.stringify(remoteAssignments));
-          assignmentData.items = assignmentData.items.map((item) => ({
-            ...item,
-            page: item.page || './Assignments Content/AssignmentContent.html',
-            milestoneId: item.milestoneId || item.id || `ms-${item.title}`,
-          }));
-          syncStats();
-          renderAssignments(activeFilter);
-          setAssignmentsNotice('');
-          return;
+        var adminData = await loadAdmin(courseId);
+        if (adminData?.items?.length) {
+          lists.push(
+            adminData.items.map(function (item) {
+              return Object.assign({}, item, {
+                source: item.source || 'nestjs',
+                page:
+                  item.page || './Assignments Content/AssignmentContent.html',
+              });
+            }),
+          );
         }
       } catch (error) {
         console.warn(
@@ -419,106 +404,66 @@ window.NibrasReact.run(() => {
       }
     }
 
-    // Fallback: fetch from backend assignments API
-    const assignmentsService = window.NibrasServices?.backendCoursesService;
-    if (
-      !assignmentsService ||
-      typeof assignmentsService.getAssignments !== 'function'
-    ) {
-      setAssignmentsNotice('');
-      return;
-    }
-
-    if (!assignmentData.items || assignmentData.items.length === 0) {
-      setAssignmentsNotice(
-        'Loading assignments from the backend...',
-        'loading',
-      );
-    }
-
-    // Resolve the backend course ID (MongoDB ObjectId) from the local slug
-    let backendId = backendCourseId;
+    var assignmentsService = window.NibrasServices?.backendCoursesService;
+    var backendId = backendCourseId;
     if (!backendId) {
-      const resolveAsync = window.NibrasCourses?.resolveCourseIdentifiersAsync;
-      const identifiers =
+      var resolveAsync = window.NibrasCourses?.resolveCourseIdentifiersAsync;
+      var identifiers =
         typeof resolveAsync === 'function'
           ? await resolveAsync(courseId, { loadRemote: true })
           : null;
       backendId =
         identifiers?.adminCourseId || identifiers?.backendCourseId || null;
     }
-    if (!backendId) {
-      console.log('[ASSIGNMENTS.JS] No backend course ID mapping available');
-      setAssignmentsNotice('');
-      return;
+    if (
+      assignmentsService &&
+      typeof assignmentsService.getAssignments === 'function' &&
+      backendId
+    ) {
+      try {
+        var response = await assignmentsService.getAssignments(backendId);
+        var nestItems = Array.isArray(response?.data) ? response.data : [];
+        if (nestItems.length && mappers?.mapNestjsAssignmentToCard) {
+          lists.push(
+            nestItems.map(function (item) {
+              return mappers.mapNestjsAssignmentToCard(item, courseId);
+            }),
+          );
+        }
+      } catch (error) {
+        console.warn(
+          '[ASSIGNMENTS.JS] NestJS hydrate failed:',
+          error?.message || error,
+        );
+      }
     }
 
-    try {
-      const response = await assignmentsService.getAssignments(backendId);
-      let items = Array.isArray(response?.data) ? response.data : [];
-      if (!items.length) {
-        console.log('[ASSIGNMENTS.JS] No backend assignments found');
-        setAssignmentsNotice('');
-        return;
-      }
+    if (selectedCourse.assignments?.items?.length) {
+      lists.push(
+        selectedCourse.assignments.items.map(function (item) {
+          return Object.assign({}, item, {
+            source: item.source || 'static',
+            page: item.page || './Assignments Content/AssignmentContent.html',
+          });
+        }),
+      );
+    }
 
-      const mapped = items.map((item) => {
-        const due = item.dueDate ? new Date(item.dueDate) : null;
-        const dueDateStr = due
-          ? due.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })
-          : 'TBD';
-        const dueTimeStr = due
-          ? due.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '';
+    var merged = mappers?.mergeAssignmentLists
+      ? mappers.mergeAssignmentLists(lists)
+      : lists.flat();
 
-        return {
-          id: item._id || item.id,
-          backendAssignmentId: item._id || item.id,
-          title: item.title || 'Untitled Assignment',
-          description: item.description || '',
-          dueDate: dueDateStr,
-          dueTime: dueTimeStr,
-          status: 'pending',
-          statusLabel: 'Pending',
-          points: item.maxScore || item.points || 100,
-          score: null,
-          type: 'File Upload',
-          action: 'Submit',
-          page: './Assignments Content/AssignmentContent.html',
-          milestoneId: item._id || `ms-${item.title}`,
-        };
-      });
-
-      const total = mapped.length;
-      const totalPoints = mapped.reduce((sum, a) => sum + a.points, 0);
-
+    if (merged.length) {
       assignmentData = {
-        items: mapped,
-        stats: {
-          total,
-          completed: 0,
-          pointsEarned: 0,
-          pointsTotal: totalPoints,
-          progressPercent: 0,
-        },
+        items: merged,
+        stats: mappers?.computeAssignmentStats
+          ? mappers.computeAssignmentStats(merged)
+          : assignmentData.stats,
       };
-
       syncStats();
       renderAssignments(activeFilter);
-      setAssignmentsNotice('');
-    } catch (error) {
-      console.warn(
-        '[ASSIGNMENTS.JS] Failed to fetch from backend:',
-        error?.message || error,
-      );
-      setAssignmentsNotice('');
     }
+
+    setAssignmentsNotice('');
   }
 });

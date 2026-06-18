@@ -11,6 +11,7 @@ let trackingCourseId =
   selectedCourse?.trackingCourseId || adminCourseId || null;
 var sectionIdMap = {};
 var videoIdByLessonId = {};
+var lessonIdByVideoId = {};
 let currentVideoElement = null;
 let currentIframeElement = null;
 var currentYouTubePlayer = null;
@@ -204,7 +205,7 @@ function handleVideoComplete(lesson, videoItem) {
       completedLectures.push(lesson.id);
       saveCompletedLectures(completedLectures);
       console.log(`[VIDEOS.JS] Marked lecture as complete: ${lesson.id}`);
-      saveProgressToBackend(lesson.id);
+      saveProgressToBackend(lesson.id, videoItem);
       saveCourseProgress();
     }
   }
@@ -231,17 +232,22 @@ function saveCourseProgress() {
   } catch (_) {}
 }
 
-function saveProgressToBackend(lessonId) {
+function saveProgressToBackend(lessonId, videoItem, watchedProgress) {
   var trackingSvc = window.NibrasServices?.trackingCourseService;
-  var videoId = videoIdByLessonId[lessonId];
+  var videoId =
+    videoItem?.trackingVideoId || videoIdByLessonId[lessonId] || null;
   if (
     trackingSvc &&
     videoId &&
     typeof trackingSvc.saveVideoProgress === 'function'
   ) {
     trackingSvc
-      .saveVideoProgress(videoId, { watched: true, watchedProgress: 1 })
+      .saveVideoProgress(videoId, {
+        watched: true,
+        watchedProgress: watchedProgress != null ? watchedProgress : 1,
+      })
       .catch(function () {});
+    window.NibrasCourseSidebar?.hydrateSidebarProgress?.(selectedCourse);
     return;
   }
   var svc = window.NibrasServices?.coursesService;
@@ -264,9 +270,11 @@ async function syncProgressFromBackend() {
       var changed = false;
       sections.forEach(function (section) {
         (section.videos || []).forEach(function (video) {
-          var lessonId = Object.keys(videoIdByLessonId).find(function (key) {
-            return videoIdByLessonId[key] === video.id;
-          });
+          var lessonId =
+            lessonIdByVideoId[video.id] ||
+            Object.keys(videoIdByLessonId).find(function (key) {
+              return videoIdByLessonId[key] === video.id;
+            });
           if (lessonId && video.watched && !stored.includes(lessonId)) {
             stored.push(lessonId);
             changed = true;
@@ -456,6 +464,12 @@ function buildLessonFromVideo(video, index, courseSlug) {
 }
 
 async function resolveTrackingCourseId() {
+  var resolved = window.NibrasCourseSidebar?.resolveTrackingId?.(selectedCourse);
+  if (resolved) {
+    trackingCourseId = resolved;
+    return;
+  }
+
   var trackingSvc = window.NibrasServices?.trackingCourseService;
   if (!trackingSvc || typeof trackingSvc.list !== 'function') return;
 
@@ -508,15 +522,19 @@ async function syncProgressFromTracking() {
 
     var stored = getCompletedLectures();
     var changed = false;
-    courseData.lessons.forEach(function (lesson, index) {
-      var remoteVideo = trackingVideos[index];
-      if (!remoteVideo) return;
-      videoIdByLessonId[lesson.id] = remoteVideo.id;
+    trackingVideos.forEach(function (remoteVideo) {
+      var lessonId =
+        lessonIdByVideoId[remoteVideo.id] ||
+        Object.keys(videoIdByLessonId).find(function (key) {
+          return videoIdByLessonId[key] === remoteVideo.id;
+        });
+      if (!lessonId) return;
+      videoIdByLessonId[lessonId] = remoteVideo.id;
       if (remoteVideo.sectionId) {
-        sectionIdMap[lesson.id] = remoteVideo.sectionId;
+        sectionIdMap[lessonId] = remoteVideo.sectionId;
       }
-      if (remoteVideo.watched && !stored.includes(lesson.id)) {
-        stored.push(lesson.id);
+      if (remoteVideo.watched && !stored.includes(lessonId)) {
+        stored.push(lessonId);
         changed = true;
       }
     });
@@ -534,7 +552,75 @@ async function syncProgressFromTracking() {
 
 async function loadCurriculumFromTracking() {
   await resolveTrackingCourseId();
-  return false;
+  var trackingSvc = window.NibrasServices?.trackingCourseService;
+  if (!trackingSvc || !trackingCourseId) return false;
+
+  try {
+    var sectionsRes = await trackingSvc.listSections(trackingCourseId);
+    var sections = sectionsRes?.sections || sectionsRes?.data?.sections || [];
+    if (!sections.length) return false;
+
+    var mapper = window.NibrasCourseMappers?.mapTrackingSectionsToLessons;
+    if (mapper) {
+      var mapped = mapper(sections, courseId);
+      if (!mapped.lessons.length) return false;
+      courseData = {
+        lessons: mapped.lessons,
+        progress: mapped.progress,
+        currentLessonId:
+          courseData?.currentLessonId ||
+          mapped.currentLessonId ||
+          mapped.lessons[0].id,
+      };
+      videoIdByLessonId = mapped.videoIdByLessonId || {};
+      lessonIdByVideoId = mapped.lessonIdByVideoId || {};
+      mapped.lessons.forEach(function (lesson) {
+        if (lesson.trackingSectionId) {
+          sectionIdMap[lesson.id] = lesson.trackingSectionId;
+        }
+        (lesson.videoItems || []).forEach(function (item) {
+          if (item.trackingVideoId) {
+            lessonIdByVideoId[item.trackingVideoId] = lesson.id;
+            videoIdByLessonId[lesson.id] = item.trackingVideoId;
+          }
+        });
+      });
+      console.log(
+        '[VIDEOS.JS] Loaded',
+        mapped.lessons.length,
+        'lectures from tracking API',
+      );
+      return true;
+    }
+
+    var lessons = [];
+    var flatIndex = 0;
+    sections.forEach(function (section) {
+      (section.videos || []).forEach(function (video) {
+        lessons.push(
+          buildLessonFromVideo(
+            Object.assign({}, video, { sectionId: section.id }),
+            flatIndex,
+            courseId,
+          ),
+        );
+        flatIndex += 1;
+      });
+    });
+    if (!lessons.length) return false;
+    courseData = {
+      lessons: lessons,
+      progress: { completed: 0, total: lessons.length },
+      currentLessonId: lessons[0].id,
+    };
+    return true;
+  } catch (error) {
+    console.warn(
+      '[VIDEOS.JS] loadCurriculumFromTracking failed:',
+      error?.message || error,
+    );
+    return false;
+  }
 }
 
 async function initSectionMapping() {
@@ -593,42 +679,12 @@ async function initSectionMapping() {
   } catch (_) {}
 }
 
-function setCourseLinks() {
-  if (!courseId) return;
-
-  // Update data-nav-link elements
-  const navLinks = [
-    { key: 'courseContent', path: '../Course Description/courseContent.html' },
-    { key: 'videos', path: './videos.html' },
-    { key: 'assignments', path: '../Assignments/Assignments.html' },
-
-    { key: 'grades', path: '../Grades/grades.html' },
-  ];
-
-  navLinks.forEach(({ key, path }) => {
-    const el = document.querySelector(`[data-nav-link="${key}"]`);
-    if (el)
-      el.setAttribute(
-        'href',
-        window.NibrasCourses.withCourseId(path, courseId),
-      );
-  });
-
-  // Also update back button
-  const backBtn = document.querySelector('.back-btn');
-  if (backBtn)
-    backBtn.setAttribute(
-      'href',
-      window.NibrasCourses.withCourseId('../courses.html', courseId),
-    );
-}
-
 function initThemeToggle() {
   const themeBtn = document.getElementById('themeBtn');
   const themeIcon = themeBtn?.querySelector('i');
   const themeText = themeBtn?.querySelector('span');
 
-  const savedTheme = localStorage.getItem('theme') || 'dark';
+  const savedTheme = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
   updateButtonState(savedTheme);
 
@@ -661,8 +717,14 @@ function initThemeToggle() {
 }
 
 async function initVideos() {
+  window.NibrasCourseSidebar?.initCoursePageChrome?.({
+    activeKey: 'videos',
+    pageRoot: 'videos',
+    deferProgress: true,
+  });
+
   if (!selectedCourse || !courseData) {
-    var progressText = document.getElementById('progress-text');
+    var progressText = document.getElementById('sidebar-progress-text');
     if (progressText) {
       progressText.textContent =
         'Unable to load course videos. Return to the courses list and try again.';
@@ -671,7 +733,13 @@ async function initVideos() {
   }
 
   initThemeToggle();
-  setCourseLinks();
+
+  await resolveTrackingCourseId();
+  var loadedFromApi = await loadCurriculumFromTracking();
+  if (!loadedFromApi) {
+    console.log('[VIDEOS.JS] Using static catalog videos');
+  }
+
   applyCompletionState();
   populateUI(courseData);
   setupVideoPlayer();
@@ -679,19 +747,14 @@ async function initVideos() {
   setupLectureVideoItemsHandler();
   setupNavigationButtons();
 
-  resolveTrackingCourseId()
-    .then(function () {
-      return initSectionMapping();
-    })
-    .then(function () {
-      return syncProgressFromTracking();
-    })
-    .then(function () {
-      syncProgressFromBackend();
-      applyCompletionState();
-      populateUI(courseData);
-    })
-    .catch(function () {});
+  try {
+    await initSectionMapping();
+    await syncProgressFromTracking();
+    await syncProgressFromBackend();
+    applyCompletionState();
+    populateUI(courseData);
+    await window.NibrasCourseSidebar?.hydrateSidebarProgress?.(selectedCourse);
+  } catch (_) {}
 }
 
 function populateUI(data) {
@@ -730,10 +793,18 @@ function populateUI(data) {
     }
   }
 
-  document.getElementById('progress-text').textContent =
-    `${data.progress.completed} of ${data.progress.total} lectures completed`;
-  const pct = (data.progress.completed / data.progress.total) * 100;
-  document.getElementById('progress-fill').style.width = `${pct}%`;
+  var progressPct =
+    data.progress.total > 0
+      ? (data.progress.completed / data.progress.total) * 100
+      : 0;
+  window.NibrasCourseSidebar?.updateSidebarProgress?.({
+    text:
+      data.progress.completed +
+      ' of ' +
+      data.progress.total +
+      ' lectures completed',
+    percent: progressPct,
+  });
 
   const listContainer = document.getElementById('lecture-list');
   listContainer.innerHTML = '';
@@ -1208,10 +1279,6 @@ function loadLesson(lessonId) {
   populateUI(courseData);
   setupVideoPlayer();
   window.scrollTo(0, 0);
-}
-
-async function hydrateLessonsFromAdmin() {
-  return;
 }
 
 function formatTime(seconds) {

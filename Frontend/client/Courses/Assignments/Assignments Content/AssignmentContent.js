@@ -13,16 +13,25 @@ window.NibrasReact.run(() => {
     } catch (_) {}
   }
 
-  var isInstructor = (function () {
-    try {
-      var u = JSON.parse(localStorage.getItem('user') || '{}');
-      return (
-        String(u?.role?.name || u?.role || '').toLowerCase() === 'instructor'
-      );
-    } catch (_) {
-      return false;
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('assignmentId')) {
+    data = data || {};
+    if (!data.trackingAssignmentId) {
+      data.trackingAssignmentId = urlParams.get('assignmentId');
     }
-  })();
+    if (urlParams.get('source')) data.source = urlParams.get('source');
+    else if (!data.source) data.source = 'tracking';
+  }
+
+  var isInstructor = window.NibrasCourseSidebar?.isInstructor?.() || false;
+
+  window.NibrasCourseSidebar?.initCoursePageChrome?.({
+    activeKey: 'assignments',
+    pageRoot: 'assignmentContent',
+    extraLinks: { assignmentsCrumb: true },
+    deferProgress: true,
+  });
+  window.NibrasCourseSidebar?.hydrateSidebarProgress?.(selectedCourse);
 
   const services = window.NibrasServices;
   const cs = services?.coursesService;
@@ -33,7 +42,10 @@ window.NibrasReact.run(() => {
   const fs = services?.feedbackService;
   const projectsClient = window.NibrasProjectsApi?.createClient?.();
 
-  const assignmentId = data?.backendAssignmentId || data?.assignmentId;
+  const assignmentId =
+    data?.trackingAssignmentId ||
+    data?.backendAssignmentId ||
+    data?.assignmentId;
   const backendCourseId =
     data?.backendCourseId ||
     selectedCourse?.adminCourseId ||
@@ -88,42 +100,7 @@ window.NibrasReact.run(() => {
     });
   }
 
-  // --- Update nav links ---
-  const navLinks = [
-    {
-      key: 'courseContent',
-      path: '../../Course Description/courseContent.html',
-    },
-    { key: 'videos', path: '../../Videos/videos.html' },
-    { key: 'assignments', path: '../Assignments.html' },
-    { key: 'grades', path: '../../Grades/grades.html' },
-  ];
-  navLinks.forEach(({ key, path }) => {
-    const el = document.querySelector(`[data-nav-link="${key}"]`);
-    if (el)
-      el.setAttribute(
-        'href',
-        window.NibrasCourses.withCourseId(path, courseId),
-      );
-  });
-  const backBtn = document.querySelector('.back-btn');
-  if (backBtn)
-    backBtn.setAttribute(
-      'href',
-      window.NibrasCourses.withCourseId('../../courses.html', courseId),
-    );
-  const crumbLink = document.querySelector('.crumb-link');
-  if (crumbLink)
-    crumbLink.setAttribute(
-      'href',
-      window.NibrasCourses.withCourseId('../Assignments.html', courseId),
-    );
-  const metaTitle = document.querySelector('.course-meta h4');
-  const metaSubtitle = document.querySelector('.course-meta span');
-  if (metaTitle)
-    metaTitle.textContent = `${selectedCourse.code}: ${selectedCourse.title}`;
-  if (metaSubtitle)
-    metaSubtitle.textContent = `${selectedCourse.overview.term} • Week ${selectedCourse.overview.currentWeek}`;
+  // --- Update nav links — handled by course-sidebar ---
 
   // --- Tab Switching ---
   const subTabs = document.querySelectorAll('.sub-tab');
@@ -814,11 +791,159 @@ window.NibrasReact.run(() => {
   // --- Populate UI ---
   populateUI(data);
 
+  if (data?.source === 'tracking') {
+    initTrackingAssignment(data);
+    return;
+  }
+
   // --- Async data fetching from backend ---
   if (assignmentId) {
     loadAssignmentFromBackend(assignmentId);
     if (submissionId) {
       loadExistingResults(submissionId);
+    }
+  }
+
+  async function initTrackingAssignment(detail) {
+    var trackingSvc = window.NibrasServices?.trackingCourseService;
+    var trackingAssignmentId = detail.trackingAssignmentId || assignmentId;
+    if (!trackingSvc || !trackingAssignmentId) return;
+
+    var submitSection = document.getElementById('submit-section');
+    var codeTab = document.querySelector('[data-tab="code"]');
+    var githubTab = document.querySelector('[data-tab="github"]');
+    if (codeTab) codeTab.style.display = 'none';
+    if (githubTab) githubTab.style.display = 'none';
+
+    try {
+      var payload = await trackingSvc.getAssignment(trackingAssignmentId);
+      var assignment = payload?.data || payload;
+      if (!assignment) return;
+
+      data = Object.assign({}, detail, {
+        title: assignment.title || detail.title,
+        description: assignment.description || assignment.content || '',
+        points: assignment.pointsPossible || detail.points,
+        assignmentType: assignment.assignmentType || 'text',
+        status: assignment.status || detail.status,
+        scoreEarned: assignment.score != null ? assignment.score : detail.scoreEarned,
+        feedback: assignment.feedback || detail.feedback?.comment,
+      });
+      populateUI(data);
+
+      var filePanel = document.getElementById('panel-file');
+      if (filePanel) {
+        filePanel.innerHTML =
+          '<div class="tracking-assignment-body">' +
+          '<div id="tracking-assignment-content"></div>' +
+          '<textarea id="tracking-text-answer" rows="10" style="width:100%; margin-top:1rem;" placeholder="Enter your response..."></textarea>' +
+          '<div id="tracking-mcq-container" style="margin-top:1rem;"></div>' +
+          '<button id="btn-submit-tracking" class="back-btn" style="width:auto; margin-top:1rem;">Submit Assignment</button>' +
+          '<p id="tracking-submit-status" style="margin-top:0.75rem; color:var(--text-secondary);"></p>' +
+          '</div>';
+      }
+
+      var contentEl = document.getElementById('tracking-assignment-content');
+      if (contentEl && assignment.content) {
+        contentEl.innerHTML = '<p>' + escHtml(assignment.content) + '</p>';
+      }
+
+      var mcqContainer = document.getElementById('tracking-mcq-container');
+      var textAnswer = document.getElementById('tracking-text-answer');
+      if (
+        (assignment.assignmentType === 'mcq' ||
+          assignment.assignmentType === 'quiz') &&
+        assignment.config?.questions?.length &&
+        mcqContainer
+      ) {
+        if (textAnswer) textAnswer.style.display = 'none';
+        mcqContainer.innerHTML = assignment.config.questions
+          .map(function (q, qi) {
+            var options = (q.options || [])
+              .map(function (opt) {
+                return (
+                  '<label style="display:block; margin:0.35rem 0;">' +
+                  '<input type="radio" name="mcq-' +
+                  escHtml(q.id) +
+                  '" value="' +
+                  escHtml(opt.id) +
+                  '"> ' +
+                  escHtml(opt.label || opt.text || opt.id) +
+                  '</label>'
+                );
+              })
+              .join('');
+            return (
+              '<div class="mcq-question" style="margin-bottom:1rem;">' +
+              '<strong>' +
+              (qi + 1) +
+              '. ' +
+              escHtml(q.prompt || q.text || 'Question') +
+              '</strong>' +
+              options +
+              '</div>'
+            );
+          })
+          .join('');
+      } else if (textAnswer) {
+        textAnswer.style.display = '';
+      }
+
+      if (assignment.status === 'graded' || assignment.status === 'submitted') {
+        if (submitSection) submitSection.style.display = 'none';
+      }
+
+      var submitBtn = document.getElementById('btn-submit-tracking');
+      var statusEl = document.getElementById('tracking-submit-status');
+      if (submitBtn && !isInstructor) {
+        submitBtn.addEventListener('click', async function () {
+          try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            var body = {};
+            if (
+              assignment.assignmentType === 'mcq' ||
+              assignment.assignmentType === 'quiz'
+            ) {
+              var answers = {};
+              (assignment.config?.questions || []).forEach(function (q) {
+                var selected = document.querySelector(
+                  'input[name="mcq-' + q.id + '"]:checked',
+                );
+                if (selected) answers[q.id] = selected.value;
+              });
+              body.answers = answers;
+            } else {
+              body.content = textAnswer ? textAnswer.value.trim() : '';
+              if (!body.content) {
+                throw new Error('Please enter a response before submitting.');
+              }
+            }
+            var result = await trackingSvc.submitAssignment(
+              trackingAssignmentId,
+              body,
+            );
+            var submission = result?.data || result;
+            if (statusEl) {
+              statusEl.textContent =
+                'Submitted successfully' +
+                (submission?.score != null
+                  ? ' — Score: ' + submission.score
+                  : '');
+            }
+            if (submitSection) submitSection.style.display = 'none';
+          } catch (err) {
+            if (statusEl) statusEl.textContent = err.message || 'Submit failed';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Assignment';
+          }
+        });
+      }
+    } catch (error) {
+      console.warn(
+        '[AssignmentContent] Tracking assignment load failed:',
+        error?.message || error,
+      );
     }
   }
 
