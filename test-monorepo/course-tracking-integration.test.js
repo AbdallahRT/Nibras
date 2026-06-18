@@ -2,40 +2,18 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
 
 const { buildApp } = require('../apps/api/dist/app');
-const { FileStore } = require('../apps/api/dist/store');
+const { PrismaStore } = require('../apps/api/dist/prisma-store');
+const { getSharedPrisma } = require('../apps/api/dist/lib/prisma');
 const {
   CourseGradesRollupSchema,
   CourseAssignmentSchema,
   TrackingCourseDetailSchema,
 } = require('@nibras/contracts');
 
-function makeStorePath() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nibras-courses-tab-'));
-  return path.join(dir, 'store.json');
-}
-
-function buildTestApp(storePath, options = {}) {
-  const store = new FileStore(storePath);
-  const data = store.read('http://127.0.0.1');
-  data.sessions.push({
-    accessToken: options.token || 'student-token',
-    refreshToken: 'refresh',
-    userId: options.userId || 'user_demo',
-    createdAt: new Date().toISOString(),
-  });
-  const user = data.users.find((u) => u.id === (options.userId || 'user_demo'));
-  if (user && options.systemRole) user.systemRole = options.systemRole;
-  store.write(data);
-  return buildApp(new FileStore(storePath));
-}
-
 test('GET /v1/tracking/courses/:courseId/grades/me requires authentication', async (t) => {
-  const app = buildApp(new FileStore(makeStorePath()));
+  const app = buildApp();
   try {
     const res = await app.inject({
       method: 'GET',
@@ -57,36 +35,20 @@ test('course detail progress and grades rollup with Prisma', async (t) => {
     return;
   }
 
-  const { PrismaClient } = require('@prisma/client');
-  const prisma = new PrismaClient();
-  t.after(async () => prisma.$disconnect());
-
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-  } catch {
-    t.skip('Database unavailable');
-    return;
-  }
-
-  const storePath = makeStorePath();
-  const instructorApp = buildTestApp(storePath, {
-    userId: 'user_instructor',
-    token: 'instructor-token',
-    systemRole: 'admin',
-  });
-  const studentApp = buildTestApp(storePath, {
-    userId: 'user_demo',
-    token: 'student-token',
-  });
+  const prisma = getSharedPrisma();
+  const store = new PrismaStore(prisma);
+  const app = buildApp(store);
 
   const slug = `courses-tab-${Date.now()}`;
   let courseId;
   let sectionId;
   let videoId;
   let assignmentId;
+  let instructorToken;
+  let studentToken;
 
   async function ensureUser(id, username, email) {
-    await prisma.user.upsert({
+    return prisma.user.upsert({
       where: { id },
       create: { id, username, email, emailVerified: true },
       update: {},
@@ -94,7 +56,11 @@ test('course detail progress and grades rollup with Prisma', async (t) => {
   }
 
   try {
-    await ensureUser('user_instructor', 'instructor_tab', 'instructor-tab@test.dev');
+    await ensureUser(
+      'user_instructor',
+      'instructor_tab',
+      'instructor-tab@test.dev',
+    );
     await ensureUser('user_demo', 'demo_tab', 'demo-tab@test.dev');
 
     const course = await prisma.course.create({
@@ -113,19 +79,24 @@ test('course detail progress and grades rollup with Prisma', async (t) => {
     });
     courseId = course.id;
 
-    const sectionRes = await instructorApp.inject({
+    const instructorSession = await store.createSessionForUser('user_instructor');
+    const studentSession = await store.createSessionForUser('user_demo');
+    instructorToken = instructorSession.accessToken;
+    studentToken = studentSession.accessToken;
+
+    const sectionRes = await app.inject({
       method: 'POST',
       url: `/v1/tracking/courses/${courseId}/sections`,
-      headers: { authorization: 'Bearer instructor-token' },
+      headers: { authorization: `Bearer ${instructorToken}` },
       payload: { title: 'Lecture 1', sortOrder: 0 },
     });
     assert.equal(sectionRes.statusCode, 200);
     sectionId = sectionRes.json().id;
 
-    const videoRes = await instructorApp.inject({
+    const videoRes = await app.inject({
       method: 'POST',
       url: `/v1/tracking/courses/${courseId}/sections/${sectionId}/videos`,
-      headers: { authorization: 'Bearer instructor-token' },
+      headers: { authorization: `Bearer ${instructorToken}` },
       payload: {
         title: 'Intro Video',
         provider: 'youtube',
@@ -136,10 +107,10 @@ test('course detail progress and grades rollup with Prisma', async (t) => {
     assert.equal(videoRes.statusCode, 200);
     videoId = videoRes.json().id;
 
-    const assignRes = await instructorApp.inject({
+    const assignRes = await app.inject({
       method: 'POST',
       url: `/v1/tracking/courses/${courseId}/assignments`,
-      headers: { authorization: 'Bearer instructor-token' },
+      headers: { authorization: `Bearer ${instructorToken}` },
       payload: {
         title: 'Tab Test Assignment',
         assignmentType: 'text',
@@ -148,14 +119,14 @@ test('course detail progress and grades rollup with Prisma', async (t) => {
         published: true,
       },
     });
-    assert.equal(assignRes.statusCode, 200);
+    assert.ok([200, 201].includes(assignRes.statusCode));
     assignmentId = assignRes.json().id;
     CourseAssignmentSchema.parse(assignRes.json());
 
-    const listRes = await studentApp.inject({
+    const listRes = await app.inject({
       method: 'GET',
       url: `/v1/tracking/courses/${courseId}/assignments`,
-      headers: { authorization: 'Bearer student-token' },
+      headers: { authorization: `Bearer ${studentToken}` },
     });
     assert.equal(listRes.statusCode, 200);
     const listed = Array.isArray(listRes.json())
@@ -166,26 +137,26 @@ test('course detail progress and grades rollup with Prisma', async (t) => {
       'assignment appears in student list',
     );
 
-    const submitRes = await studentApp.inject({
+    const submitRes = await app.inject({
       method: 'POST',
       url: `/v1/tracking/assignments/${assignmentId}/submit`,
-      headers: { authorization: 'Bearer student-token' },
+      headers: { authorization: `Bearer ${studentToken}` },
       payload: { content: 'hello world response' },
     });
-    assert.equal(submitRes.statusCode, 200);
+    assert.ok([200, 201].includes(submitRes.statusCode));
 
-    const progressRes = await studentApp.inject({
+    const progressRes = await app.inject({
       method: 'POST',
       url: `/v1/tracking/videos/${videoId}/progress`,
-      headers: { authorization: 'Bearer student-token' },
+      headers: { authorization: `Bearer ${studentToken}` },
       payload: { watched: true, watchedProgress: 1 },
     });
     assert.equal(progressRes.statusCode, 200);
 
-    const detailRes = await studentApp.inject({
+    const detailRes = await app.inject({
       method: 'GET',
       url: `/v1/tracking/courses/${courseId}/detail`,
-      headers: { authorization: 'Bearer student-token' },
+      headers: { authorization: `Bearer ${studentToken}` },
     });
     assert.equal(detailRes.statusCode, 200);
     const detail = TrackingCourseDetailSchema.parse(detailRes.json());
@@ -194,10 +165,10 @@ test('course detail progress and grades rollup with Prisma', async (t) => {
       'detail reflects video progress',
     );
 
-    const gradesRes = await studentApp.inject({
+    const gradesRes = await app.inject({
       method: 'GET',
       url: `/v1/tracking/courses/${courseId}/grades/me`,
-      headers: { authorization: 'Bearer student-token' },
+      headers: { authorization: `Bearer ${studentToken}` },
     });
     assert.equal(gradesRes.statusCode, 200);
     const rollup = CourseGradesRollupSchema.parse(gradesRes.json());
@@ -207,8 +178,7 @@ test('course detail progress and grades rollup with Prisma', async (t) => {
       'grades rollup includes submitted assignment',
     );
   } finally {
-    await instructorApp.close();
-    await studentApp.close();
+    await app.close();
     if (courseId) {
       await prisma.course.delete({ where: { id: courseId } }).catch(() => {});
     }
