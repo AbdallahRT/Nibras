@@ -4,6 +4,7 @@ import { FastifyInstance } from 'fastify';
 import { AppStore } from '../../store';
 import { requestBaseUrl } from '../../lib/request-base-url';
 import {
+  ADMIN_AUTH_USER_SELECT,
   allocateUsername,
   buildAuthResponse,
   consumeOtp,
@@ -45,14 +46,7 @@ export function registerAdminAuthRoutes(
 
     const user = await prisma.user.findFirst({
       where: { email: { equals: email, mode: 'insensitive' } },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        systemRole: true,
-        emailVerified: true,
-      },
+      select: ADMIN_AUTH_USER_SELECT,
     });
     if (!user) {
       return authFailure(reply, 'Invalid email or password.');
@@ -126,14 +120,7 @@ export function registerAdminAuthRoutes(
         emailVerified: false,
         systemRole: SystemRole.user,
       },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        systemRole: true,
-        emailVerified: true,
-      },
+      select: ADMIN_AUTH_USER_SELECT,
     });
 
     await prisma.authAccount.create({
@@ -172,14 +159,7 @@ export function registerAdminAuthRoutes(
 
     const user = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        systemRole: true,
-        emailVerified: true,
-      },
+      select: ADMIN_AUTH_USER_SELECT,
     });
     if (!user) {
       return reply.code(404).send({ message: 'Account not found.' });
@@ -193,14 +173,7 @@ export function registerAdminAuthRoutes(
     const verified = await prisma.user.update({
       where: { id: user.id },
       data: { emailVerified: true },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        systemRole: true,
-        emailVerified: true,
-      },
+      select: ADMIN_AUTH_USER_SELECT,
     });
 
     const session = await createCliSession(prisma, verified.id);
@@ -424,6 +397,7 @@ export function registerAdminAuthRoutes(
         email: user.email,
         username: user.username,
         displayName: user.displayName ?? null,
+        yearLevel: user.yearLevel,
         systemRole:
           user.systemRole === 'admin' ? SystemRole.admin : SystemRole.user,
       }),
@@ -441,13 +415,7 @@ export function registerAdminAuthRoutes(
       where: { refreshToken, revokedAt: null },
       include: {
         user: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            displayName: true,
-            systemRole: true,
-          },
+          select: ADMIN_AUTH_USER_SELECT,
         },
       },
     });

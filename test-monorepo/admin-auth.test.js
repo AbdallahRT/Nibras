@@ -6,6 +6,68 @@ const assert = require('node:assert/strict');
 const { buildApp } = require('../apps/api/dist/app');
 const { PrismaStore } = require('../apps/api/dist/prisma-store');
 const { getSharedPrisma } = require('../apps/api/dist/lib/prisma');
+const {
+  resolveSelectedLevel,
+  toAdminUserPayload,
+} = require('../apps/api/dist/features/admin-auth/helpers');
+
+test('resolveSelectedLevel maps yearLevel to study level labels', () => {
+  assert.equal(
+    resolveSelectedLevel({
+      id: 'demo',
+      email: 'demo@nibras.dev',
+      username: 'demo',
+      displayName: 'Alex Chen',
+      systemRole: 'user',
+      yearLevel: 2,
+    }),
+    'Intermediate',
+  );
+  assert.equal(
+    resolveSelectedLevel({
+      id: 'beginner',
+      email: 'beginner@nibras.dev',
+      username: 'beginner',
+      displayName: 'Sam Beginner',
+      systemRole: 'user',
+      yearLevel: 1,
+    }),
+    'Beginner',
+  );
+  assert.equal(
+    resolveSelectedLevel({
+      id: 'advanced',
+      email: 'advanced@nibras.dev',
+      username: 'advanced',
+      displayName: 'Jordan Advanced',
+      systemRole: 'user',
+      yearLevel: 3,
+    }),
+    'Advanced',
+  );
+  assert.equal(
+    resolveSelectedLevel({
+      id: 'expert',
+      email: 'expert@nibras.dev',
+      username: 'expert',
+      displayName: 'Riley Expert',
+      systemRole: 'user',
+      yearLevel: 4,
+    }),
+    'Expert',
+  );
+  assert.equal(
+    toAdminUserPayload({
+      id: 'demo',
+      email: 'demo@nibras.dev',
+      username: 'demo',
+      displayName: 'Alex Chen',
+      systemRole: 'user',
+      yearLevel: 2,
+    }).selectedLevel,
+    'Intermediate',
+  );
+});
 
 const TEST_EMAIL = `admin-auth-test-${Date.now()}@gmail.com`;
 const TEST_PASSWORD = 'testpass123';

@@ -9,7 +9,30 @@ export type AdminAuthUser = {
   displayName: string | null;
   systemRole: SystemRole;
   emailVerified?: boolean;
+  yearLevel?: number;
 };
+
+export const ADMIN_AUTH_USER_SELECT = {
+  id: true,
+  email: true,
+  username: true,
+  displayName: true,
+  systemRole: true,
+  emailVerified: true,
+  yearLevel: true,
+} as const;
+
+const STUDY_LEVEL_BY_YEAR: Record<number, string> = {
+  1: 'Beginner',
+  2: 'Intermediate',
+  3: 'Advanced',
+  4: 'Expert',
+};
+
+export function resolveSelectedLevel(user: AdminAuthUser): string {
+  const yearLevel = user.yearLevel ?? 1;
+  return STUDY_LEVEL_BY_YEAR[yearLevel] ?? 'Beginner';
+}
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const OTP_TTL_MS = 15 * 60 * 1000;
@@ -54,7 +77,7 @@ export function toAdminUserPayload(user: AdminAuthUser) {
     role: { name: roleName },
   };
   if (roleName === 'student') {
-    return { ...payload, selectedLevel: 'Beginner' };
+    return { ...payload, selectedLevel: resolveSelectedLevel(user) };
   }
   return payload;
 }
@@ -238,18 +261,11 @@ export async function upsertOAuthUser(
   const email = profile.email.trim().toLowerCase();
   const existingAccount = await prisma.authAccount.findFirst({
     where: { providerId, accountId: profile.accountId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          username: true,
-          displayName: true,
-          systemRole: true,
-          emailVerified: true,
+      include: {
+        user: {
+          select: ADMIN_AUTH_USER_SELECT,
         },
       },
-    },
   });
 
   if (existingAccount?.user) {
@@ -260,28 +276,14 @@ export async function upsertOAuthUser(
         displayName: profile.displayName ?? existingAccount.user.displayName,
         image: profile.image ?? undefined,
       },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        systemRole: true,
-        emailVerified: true,
-      },
+      select: ADMIN_AUTH_USER_SELECT,
     });
     return user;
   }
 
   let user = await prisma.user.findUnique({
     where: { email },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      displayName: true,
-      systemRole: true,
-      emailVerified: true,
-    },
+    select: ADMIN_AUTH_USER_SELECT,
   });
 
   if (!user) {
@@ -299,14 +301,7 @@ export async function upsertOAuthUser(
         image: profile.image ?? undefined,
         systemRole: SystemRole.user,
       },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        systemRole: true,
-        emailVerified: true,
-      },
+      select: ADMIN_AUTH_USER_SELECT,
     });
   } else {
     user = await prisma.user.update({
@@ -316,14 +311,7 @@ export async function upsertOAuthUser(
         displayName: profile.displayName ?? user.displayName,
         image: profile.image ?? undefined,
       },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        displayName: true,
-        systemRole: true,
-        emailVerified: true,
-      },
+      select: ADMIN_AUTH_USER_SELECT,
     });
   }
 

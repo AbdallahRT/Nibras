@@ -35,6 +35,15 @@ Open [http://localhost:8080/Login/loginPage/login.html](http://localhost:8080/Lo
 
 Demo login password: `local123` (see `NIBRAS_DEMO_PASSWORD` in `.env`).
 
+Local level test accounts (password `local123`):
+
+| Email | Level |
+|-------|-------|
+| `beginner@nibras.dev` | Beginner (1) |
+| `demo@nibras.dev` | Intermediate (2) |
+| `advanced@nibras.dev` | Advanced (3) |
+| `expert@nibras.dev` | Expert (4) |
+
 ### Google sign-in (local)
 
 `Error 400: origin_mismatch` means your page origin is not registered for the OAuth client. Fix one of:

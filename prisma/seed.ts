@@ -379,7 +379,10 @@ Good luck! 🚀
     '  4. Open http://localhost:3000/sign-in — email/password: local123',
   );
   console.log(
-    '     (admin@nibras.local, support@nibrasplatform.me, demo@nibras.dev, instructor@nibras.dev)',
+    '     (admin@nibras.local, support@nibrasplatform.me, demo@nibras.dev,',
+  );
+  console.log(
+    '      beginner@nibras.dev, advanced@nibras.dev, expert@nibras.dev, instructor@nibras.dev)',
   );
   console.log(
     '  5. Student: nibras login → nibras setup --project cs106l/gapbuffer',

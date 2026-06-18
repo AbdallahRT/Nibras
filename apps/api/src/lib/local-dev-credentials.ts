@@ -17,9 +17,61 @@ export const LOCAL_DEV_ACCOUNT_EMAILS = [
   'admin@nibras.local',
   'support@nibrasplatform.me',
   'demo@nibras.dev',
+  'beginner@nibras.dev',
+  'advanced@nibras.dev',
+  'expert@nibras.dev',
   'instructor@nibras.dev',
   EPITOMEZIED_DEV_EMAIL,
 ] as const;
+
+export const LOCAL_DEV_LEVEL_ACCOUNTS = [
+  {
+    email: 'beginner@nibras.dev',
+    username: 'beginner',
+    displayName: 'Sam Beginner',
+    yearLevel: 1,
+    selectedLevel: 'Beginner',
+  },
+  {
+    email: 'advanced@nibras.dev',
+    username: 'advanced',
+    displayName: 'Jordan Advanced',
+    yearLevel: 3,
+    selectedLevel: 'Advanced',
+  },
+  {
+    email: 'expert@nibras.dev',
+    username: 'expert',
+    displayName: 'Riley Expert',
+    yearLevel: 4,
+    selectedLevel: 'Expert',
+  },
+] as const;
+
+export async function ensureLocalDevLevelAccounts(
+  prisma: PrismaClient,
+): Promise<void> {
+  for (const account of LOCAL_DEV_LEVEL_ACCOUNTS) {
+    await prisma.user.upsert({
+      where: { email: account.email },
+      update: {
+        username: account.username,
+        displayName: account.displayName,
+        yearLevel: account.yearLevel,
+        emailVerified: true,
+        systemRole: SystemRole.user,
+      },
+      create: {
+        username: account.username,
+        email: account.email,
+        displayName: account.displayName,
+        yearLevel: account.yearLevel,
+        emailVerified: true,
+        systemRole: SystemRole.user,
+      },
+    });
+  }
+}
 
 async function consolidateEpitomeZiedAccounts(
   prisma: PrismaClient,
@@ -162,6 +214,7 @@ export async function seedLocalDevCredentials(
   const skipped: string[] = [];
 
   await ensureEpitomeZiedDevUser(prisma);
+  await ensureLocalDevLevelAccounts(prisma);
 
   for (const email of LOCAL_DEV_ACCOUNT_EMAILS) {
     const user = await prisma.user.findUnique({
