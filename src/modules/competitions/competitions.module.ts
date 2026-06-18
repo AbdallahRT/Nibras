@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from '@modules/auth/auth.module';
+import { AssessmentsModule } from '@modules/assessments/assessments.module';
 import { GamificationModule } from '@modules/gamification/gamification.module';
 import { User, UserSchema } from '@modules/auth/schemas/user.schema';
 import {
@@ -34,34 +35,23 @@ import {
 } from './schemas';
 import { ContestsController } from './controllers/contests.controller';
 import { ContestActionsController } from './controllers/contest-actions.controller';
-import { ProblemsController } from './controllers/problems.controller';
-import { RankingController } from './controllers/ranking.controller';
-import { IntegrationsController } from './controllers/integrations.controller';
-import { PracticeController } from './controllers/practice.controller';
 import { ContestsService } from './services/contests.service';
-import { ProblemsService } from './services/problems.service';
-import { RankingService } from './services/ranking.service';
 import { LinkedAccountsService } from './services/linked-accounts.service';
-import { ReputationService } from './services/reputation.service';
 import { StandingsService } from './services/standings.service';
 import { SubmissionsService } from './services/submissions.service';
 import { JudgeService } from './services/judge.service';
 import { RatingsService } from './services/ratings.service';
 import { PostContestService } from './services/post-contest.service';
 import { TeamsService } from './services/teams.service';
-import { ContestSyncJob } from './jobs/contest-sync.job';
-import { ProblemSyncJob } from './jobs/problem-sync.job';
+import { ReputationService } from './services/reputation.service';
 import { AccountStatsSyncJob } from './jobs/account-stats-sync.job';
-import { ContestReminderJob } from './jobs/contest-reminder.job';
-import { CompetitionsSchedulerService } from './jobs/competitions-scheduler.service';
 import { ContestsGateway } from './gateways/contests.gateway';
-import { CodeforcesPracticeService } from './practice/codeforces-practice.service';
-import { LeetcodePracticeService } from './practice/leetcode-practice.service';
 import { OptionalSessionGuard } from '@common/guards/optional-session.guard';
 
 @Module({
   imports: [
     forwardRef(() => GamificationModule),
+    AssessmentsModule,
     ScheduleModule.forRoot(),
     AuthModule,
     MongooseModule.forFeature([
@@ -84,36 +74,21 @@ import { OptionalSessionGuard } from '@common/guards/optional-session.guard';
       { name: User.name, schema: UserSchema },
     ]),
   ],
-  controllers: [
-    ContestsController,
-    ContestActionsController,
-    ProblemsController,
-    RankingController,
-    IntegrationsController,
-    PracticeController,
-  ],
+  controllers: [ContestsController, ContestActionsController],
   providers: [
     ContestsService,
-    ProblemsService,
-    RankingService,
     LinkedAccountsService,
-    ReputationService,
     StandingsService,
     SubmissionsService,
     JudgeService,
     RatingsService,
     PostContestService,
     TeamsService,
-    ContestSyncJob,
-    ProblemSyncJob,
+    ReputationService,
     AccountStatsSyncJob,
-    ContestReminderJob,
-    CompetitionsSchedulerService,
     ContestsGateway,
-    CodeforcesPracticeService,
-    LeetcodePracticeService,
     OptionalSessionGuard,
   ],
-  exports: [RatingsService, LinkedAccountsService, StandingsService],
+  exports: [RatingsService, StandingsService],
 })
 export class CompetitionsModule {}

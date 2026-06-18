@@ -5,7 +5,7 @@ meta {
 }
 
 patch {
-  url: {{baseUrl}}/flags/{{flagId}}/review
+  url: {{communityBaseUrl}}/reports/{{flagId}}
   body: json
   auth: bearer
 }
@@ -16,6 +16,6 @@ auth:bearer {
 
 body:json {
   {
-    "status": "resolved"
+    "action": "dismiss"
   }
 }

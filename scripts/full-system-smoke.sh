@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Full local backend smoke test. Requires API running (npm run start:dev), MongoDB, Redis.
 # Usage: npm run smoke:local
+# Prefer gateway-based checks when the monorepo stack is running: npm run smoke:gateway
 # Optional: HR_HANDLE=your_hackerrank_username npm run smoke:local
 set -euo pipefail
 

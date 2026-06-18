@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sign-In Callback</title>
+</head>
+<body>
+    <p>Processing Google sign-in...</p>
+    <script>
+        (function handleGoogleCallback() {
+            var hash = window.location.hash.replace(/^#/, '');
+            if (!hash) {
+                window.location.replace('login.html?google_auth=error&message=' +
+                    encodeURIComponent('Missing OAuth response from Google.'));
+                return;
+            }
+
+            var params = new URLSearchParams(hash);
+            var accessToken = params.get('access_token');
+            var error = params.get('error');
+            var errorDescription = params.get('error_description');
+            var state = params.get('state');
+            var savedState = sessionStorage.getItem('google_oauth_state');
+            sessionStorage.removeItem('google_oauth_state');
+
+            var isSignup = state && state.indexOf('signup') === 0;
+            var targetPage = isSignup ? '../signupPage/signup.html' : 'login.html';
+
+            if (error) {
+                var message = errorDescription || error || 'Google sign-in was denied or failed.';
+                window.location.replace(
+                    targetPage + '?google_auth=error&message=' + encodeURIComponent(message),
+                );
+                return;
+            }
+
+            if (!accessToken || !state || !savedState || state !== savedState) {
+                window.location.replace(
+                    targetPage + '?google_auth=error&message=' +
+                        encodeURIComponent('Invalid OAuth state. Please try again.'),
+                );
+                return;
+            }
+
+            sessionStorage.setItem('google_access_token', accessToken);
+            window.location.replace(targetPage + '?google_auth=success');
+        })();
+    </script>
+</body>
+</html>

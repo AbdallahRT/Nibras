@@ -36,7 +36,7 @@ async function bootstrap() {
   );
   SwaggerModule.setup(appCfg.swaggerPath, app, swaggerDoc);
 
-  await app.listen(appCfg.port);
+  await app.listen(appCfg.port, '0.0.0.0');
 }
 
 void bootstrap();

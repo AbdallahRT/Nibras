@@ -1,0 +1,33 @@
+FROM node:20-alpine AS deps
+WORKDIR /app
+ENV HUSKY=0 \
+    REDISMS_DISABLE_POSTINSTALL=true
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+
+FROM deps AS builder
+WORKDIR /app
+ENV NODE_ENV=production
+COPY tsconfig.json tsconfig.build.json nest-cli.json ./
+COPY src ./src
+RUN npm run build
+
+FROM node:20-alpine AS prod-deps
+WORKDIR /app
+ENV HUSKY=0 \
+    REDISMS_DISABLE_POSTINSTALL=true
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=3000
+RUN addgroup -S nibras && adduser -S nibras -G nibras
+COPY --from=prod-deps --chown=nibras:nibras /app/node_modules ./node_modules
+COPY --from=builder --chown=nibras:nibras /app/dist ./dist
+COPY --chown=nibras:nibras package.json ./
+USER nibras
+EXPOSE 3000
+CMD ["node", "dist/main.js"]
