@@ -21,33 +21,59 @@ Collaborative learning, competitive programming, and project-based assessment �
 - **Docker** and Docker Compose (MongoDB, PostgreSQL, Redis)
 - **Python** 3.11+ (optional, for AI tutor)
 
-## Quick start (full stack)
+## Quick start (full local deployment)
 
 ```bash
 cp .env.example .env
-docker compose up -d mongodb redis postgres
 npm ci
-npm run build:platform
-npm run db:deploy
 npm run dev:full
 ```
 
+`dev:full` boots Docker infrastructure (Postgres, MongoDB, Redis, AI tutor, Judge0 when available), applies migrations, builds the platform, then starts NestJS, Fastify, worker, and the gateway with hot reload.
+
 Open [http://localhost:8080/Login/loginPage/login.html](http://localhost:8080/Login/loginPage/login.html)
 
-### Docker (all services)
+Demo login password: `local123` (see `NIBRAS_DEMO_PASSWORD` in `.env`).
+
+### Google sign-in (local)
+
+`Error 400: origin_mismatch` means your page origin is not registered for the OAuth client. Fix one of:
+
+1. **Team OAuth client** — In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), open the Nibras Web client and add **Authorized JavaScript origins**:
+   - `http://localhost:8080`
+   - `http://127.0.0.1:8080`
+
+2. **Your own dev client** — Create an OAuth 2.0 **Web application** client, add the same origins, then set in `.env`:
+
+   ```bash
+   NIBRAS_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   ```
+
+   Restart `npm run dev:full` so the gateway serves `/oauth-config.js` with your client ID.
+
+Until Google OAuth is configured, use email/password login (`demo@nibras.dev` / `local123`).
+
+### Docker (all services in containers)
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose --profile tutor up --build
 ```
 
 Gateway: [http://localhost:8080](http://localhost:8080)
+
+For containerized tutor talking to containerized API, set in `.env`:
+
+```bash
+NIBRAS_TUTOR_API_URL=http://fastify-api:4848/v1/community
+NIBRAS_TUTOR_API_ORIGIN=http://fastify-api:4848
+```
 
 ## Scripts
 
 | Script                      | Description                                  |
 | --------------------------- | -------------------------------------------- |
-| `npm run dev:full`          | NestJS + Fastify platform + worker + gateway |
+| `npm run dev:full`          | Full local deployment: infra + NestJS + Fastify + worker + gateway + tutor + Judge0 |
 | `npm run dev:platform`      | Fastify API, worker, and package watch build |
 | `npm run start:dev`         | NestJS API only (port 3000)                  |
 | `npm run proxy:dev`         | Gateway only (port 8080)                     |

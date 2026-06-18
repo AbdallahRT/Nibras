@@ -232,6 +232,39 @@ function serveStaticFile(
   return true;
 }
 
+function buildOAuthConfigScript(): string {
+  const googleClientId = (process.env.NIBRAS_GOOGLE_CLIENT_ID || '').trim();
+  const microsoftClientId = (
+    process.env.NIBRAS_MICROSOFT_CLIENT_ID || ''
+  ).trim();
+  const lines = ['window.NibrasApiConfig = window.NibrasApiConfig || {};'];
+  if (googleClientId) {
+    lines.push(
+      `window.NIBRAS_GOOGLE_CLIENT_ID = ${JSON.stringify(googleClientId)};`,
+    );
+    lines.push(
+      `window.NibrasApiConfig.googleClientId = ${JSON.stringify(googleClientId)};`,
+    );
+  }
+  if (microsoftClientId) {
+    lines.push(
+      `window.NIBRAS_MICROSOFT_CLIENT_ID = ${JSON.stringify(microsoftClientId)};`,
+    );
+    lines.push(
+      `window.NibrasApiConfig.microsoftClientId = ${JSON.stringify(microsoftClientId)};`,
+    );
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function serveOAuthConfig(response: ServerResponse<IncomingMessage>): void {
+  response.writeHead(200, {
+    'content-type': 'application/javascript; charset=utf-8',
+    'cache-control': 'no-cache',
+  });
+  response.end(buildOAuthConfigScript());
+}
+
 function handleStaticRequest(
   request: IncomingMessage,
   response: ServerResponse<IncomingMessage>,
@@ -276,6 +309,12 @@ export function buildProxyServer(config: Partial<ProxyConfig> = {}): Server {
 
   const server = http.createServer((request, response) => {
     const originalUrl = request.url || '/';
+    const pathname = new URL(originalUrl, 'http://localhost').pathname;
+    if (pathname === '/oauth-config.js') {
+      serveOAuthConfig(response);
+      return;
+    }
+
     const rewritten = rewriteLegacyApiPath(originalUrl);
     if (rewritten.url !== originalUrl) {
       request.url = rewritten.url;

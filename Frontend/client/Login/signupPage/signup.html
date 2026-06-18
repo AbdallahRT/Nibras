@@ -18,13 +18,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- CSS -->
     <link rel="stylesheet" href="./signup.css">
-    <!-- OAuth Client IDs -->
-    <script>
-        window.NibrasApiConfig = {
-            googleClientId: '561316297025-c9ohua7q6sa91nn2eetsprac65a3oog6.apps.googleusercontent.com',
-            microsoftClientId: '347c6c6f-1234-5678-9abc-def012345678'
-        };
-    </script>
+    <!-- OAuth client IDs: /oauth-config.js (from .env) then config.js defaults -->
+    <script src="/oauth-config.js"></script>
 </head>
 <body class="signup-page">
     <div id="app-root" hidden></div>

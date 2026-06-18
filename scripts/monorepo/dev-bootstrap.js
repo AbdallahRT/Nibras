@@ -137,20 +137,59 @@ if (!process.env.DATABASE_URL) {
 ensureEncryptionKey();
 
 const databaseConfig = parseDatabaseUrl(process.env.DATABASE_URL);
-log('Starting local Postgres with docker compose.');
-const dockerResult = spawnSync('docker', [...dockerComposeArgs, 'up', '-d'], {
-  cwd: rootDir,
-  stdio: 'inherit',
-});
+const hostDevAppServices = ['nestjs-api', 'fastify-api', 'worker', 'gateway'];
+const infraServices = ['postgres', 'mongodb', 'redis'];
 
-if (dockerResult.error) {
-  fail(`docker compose up failed: ${dockerResult.error.message}`);
+function tryDocker(args, label) {
+  const result = spawnSync('docker', args, {
+    cwd: rootDir,
+    stdio: 'inherit',
+  });
+
+  if (result.error) {
+    log(`${label} failed: ${result.error.message}`);
+    return false;
+  }
+
+  if (typeof result.status === 'number' && result.status !== 0) {
+    log(`${label} exited with code ${result.status}.`);
+    return false;
+  }
+
+  return true;
 }
 
-if (typeof dockerResult.status === 'number' && dockerResult.status !== 0) {
+log(
+  'Stopping Docker app services (dev:full runs NestJS, Fastify, worker, and gateway on the host).',
+);
+tryDocker(
+  [...dockerComposeArgs, 'stop', ...hostDevAppServices],
+  'docker compose stop app services',
+);
+
+log('Starting local infrastructure (postgres, mongodb, redis, tutor).');
+const infraStarted = tryDocker(
+  [...dockerComposeArgs, 'up', '-d', ...infraServices],
+  'docker compose up infrastructure',
+);
+if (!infraStarted) {
   log(
-    'docker compose up failed; continuing because DATABASE_URL may already be backed by a running Postgres instance.',
+    'Infrastructure compose failed; continuing because DATABASE_URL may already be backed by running services.',
   );
+}
+
+tryDocker(
+  [...dockerComposeArgs, '--profile', 'tutor', 'up', '-d', 'tutor'],
+  'docker compose up tutor',
+);
+
+log('Starting Judge0 IDE sandbox (optional).');
+const judge0Started = tryDocker(
+  ['compose', '-f', 'docker-compose.judge0.yml', 'up', '-d'],
+  'docker compose up judge0',
+);
+if (!judge0Started) {
+  log('Judge0 unavailable — in-browser IDE sandbox will be disabled.');
 }
 
 log('Waiting for Postgres readiness.');
@@ -159,3 +198,13 @@ log('Applying Prisma migrations.');
 run('npx', ['prisma', 'migrate', 'deploy'], 'prisma migrate deploy');
 log('Building workspace packages and services.');
 run('npm', ['run', 'build:platform'], 'npm run build:platform');
+
+log('');
+log('Local infrastructure ready.');
+log('  Gateway:  http://localhost:8080');
+log('  Login:    http://localhost:8080/Login/loginPage/login.html');
+log('  Tutor:    http://localhost:5000/api/health');
+if (judge0Started) {
+  log('  Judge0:   http://localhost:2358');
+}
+log('');

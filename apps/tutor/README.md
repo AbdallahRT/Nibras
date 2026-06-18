@@ -14,7 +14,7 @@ Flask service for Hassona: community RAG, hints, insights, and learning-path rou
 npm run tutor:dev
 ```
 
-Or Docker: `docker compose up -d tutor`
+Or Docker (started automatically by `npm run dev:full`): `docker compose --profile tutor up -d tutor`
 
 ## API surface
 
