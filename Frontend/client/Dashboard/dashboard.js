@@ -74,9 +74,11 @@ function getTrackingBaseUrl() {
 
 function createTrackingRequestJson() {
   const shared = window.NibrasShared || {};
-  return shared.apiFetch
-    ? shared.apiFetch.bind(shared)
-    : async (path, options = {}) => {
+  if (shared.apiFetch) {
+    return (path, options = {}) =>
+      shared.apiFetch(path, Object.assign({}, options, { service: 'tracking' }));
+  }
+  return async (path, options = {}) => {
         const headers = Object.assign(
           { 'Content-Type': 'application/json' },
           options.headers || {},

@@ -13,4 +13,13 @@ test('rewriteLegacyApiPath routes admin and gamification APIs to Fastify /v1', (
   const badges = rewriteLegacyApiPath('/api/gamification/all-badges');
   assert.equal(badges.forceFastify, true);
   assert.equal(badges.url, '/v1/gamification/all-badges');
+
+  const tracking = rewriteLegacyApiPath(
+    '/api/v1/tracking/dashboard/student?includeDeadlines=1',
+  );
+  assert.equal(tracking.forceFastify, true);
+  assert.equal(
+    tracking.url,
+    '/v1/tracking/dashboard/student?includeDeadlines=1',
+  );
 });

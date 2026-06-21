@@ -43,7 +43,7 @@ fi
 
 if railway service list --json 2>/dev/null | jq -r '.[].name' 2>/dev/null | rg -i "^${BACKEND_SERVICE}$" >/dev/null; then
   echo "==> Wiring MONGO_URI to ${BACKEND_SERVICE}..."
-  railway variable set -s "$BACKEND_SERVICE" 'MONGO_URI=${{MongoDB.MONGO_URL}}' --skip-deploys
+  railway variable set -s "$BACKEND_SERVICE" 'MONGO_URI=mongodb://${{MongoDB.MONGO_INITDB_ROOT_USERNAME}}:${{MongoDB.MONGO_INITDB_ROOT_PASSWORD}}@${{MongoDB.RAILWAY_PRIVATE_DOMAIN}}:27017/?authSource=admin' --skip-deploys
 else
   echo "Backend service (${BACKEND_SERVICE}) not found yet — MONGO_URI will be set by ./scripts/railway-secrets.sh"
 fi

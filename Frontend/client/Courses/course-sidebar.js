@@ -428,13 +428,29 @@
       var runHydrate = function () {
         hydrateSidebarProgress(selectedCourse);
       };
+      var runAnnouncements = function () {
+        if (window.NibrasCourseAnnouncements?.displayOnCourseOpen) {
+          return window.NibrasCourseAnnouncements.displayOnCourseOpen(
+            selectedCourse,
+          );
+        }
+        return null;
+      };
       if (options?.deferProgress) {
         return runHydrate;
       }
+      var runChromeHydrate = function () {
+        return Promise.all([
+          Promise.resolve(runHydrate()),
+          Promise.resolve(runAnnouncements()),
+        ]);
+      };
       if (window.NibrasReact?.run) {
-        window.NibrasReact.run(runHydrate);
+        window.NibrasReact.run(runChromeHydrate);
+      } else if (window.bootstrapReactPage) {
+        window.bootstrapReactPage(runChromeHydrate);
       } else {
-        runHydrate();
+        runChromeHydrate();
       }
     }
     return null;

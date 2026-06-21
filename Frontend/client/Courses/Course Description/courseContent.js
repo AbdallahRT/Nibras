@@ -696,6 +696,7 @@ function initAnnouncementControls() {
   var closeBtn = document.getElementById('announcement-modal-close');
   var cancelBtn = document.getElementById('announcement-cancel-btn');
   var modal = document.getElementById('announcement-modal');
+  var modalPanel = modal?.querySelector('.announcement-modal');
 
   if (newBtn) {
     newBtn.addEventListener('click', function () {
@@ -705,9 +706,22 @@ function initAnnouncementControls() {
   if (form) form.addEventListener('submit', saveAnnouncement);
   if (closeBtn) closeBtn.addEventListener('click', closeAnnouncementModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeAnnouncementModal);
+  if (modalPanel) {
+    modalPanel.addEventListener('click', function (event) {
+      event.stopPropagation();
+    });
+  }
   if (modal) {
     modal.addEventListener('click', function (event) {
       if (event.target === modal) closeAnnouncementModal();
+    });
+  }
+  if (!window.__nibrasAnnouncementEscapeBound) {
+    window.__nibrasAnnouncementEscapeBound = true;
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') return;
+      var openModal = document.getElementById('announcement-modal');
+      if (openModal && !openModal.hidden) closeAnnouncementModal();
     });
   }
 }

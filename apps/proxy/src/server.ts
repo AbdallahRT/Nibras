@@ -145,6 +145,11 @@ function rewriteLegacyApiPath(url = '/'): {
     return { url: `${parsed.pathname}${parsed.search}`, forceFastify: true };
   }
 
+  if (pathname === '/api/v1' || pathname.startsWith('/api/v1/')) {
+    parsed.pathname = pathname.replace(/^\/api/, '');
+    return { url: `${parsed.pathname}${parsed.search}`, forceFastify: true };
+  }
+
   return { url, forceFastify: false };
 }
 

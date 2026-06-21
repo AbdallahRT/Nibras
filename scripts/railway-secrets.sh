@@ -109,6 +109,8 @@ BACKEND_VARS=(
 
 if [[ -n "${MONGO_URI:-}" ]]; then
   BACKEND_VARS+=("MONGO_URI=${MONGO_URI}")
+elif service_exists "MongoDB"; then
+  BACKEND_VARS+=('MONGO_URI=mongodb://${{MongoDB.MONGO_INITDB_ROOT_USERNAME}}:${{MongoDB.MONGO_INITDB_ROOT_PASSWORD}}@${{MongoDB.RAILWAY_PRIVATE_DOMAIN}}:27017/?authSource=admin')
 else
   BACKEND_VARS+=('MONGO_URI=${{MongoDB.MONGO_URL}}')
 fi
