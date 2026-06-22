@@ -1,13 +1,20 @@
 window.NibrasReact.run(function () {
   var navLinks = document.querySelectorAll('.nav-link');
   navLinks.forEach(function (link) {
-    link.addEventListener('click', function (e) {
+    link.addEventListener('click', function () {
       navLinks.forEach(function (n) {
         n.classList.remove('active');
       });
       link.classList.add('active');
     });
   });
+
+  var TYPE_LABELS = {
+    overall: 'Overall',
+    academic: 'Academic',
+    competitive: 'Competitive',
+    community: 'Community',
+  };
 
   var currentState = {
     type: 'overall',
@@ -17,111 +24,71 @@ window.NibrasReact.run(function () {
   };
   var userContainer = document.getElementById('user-rank-container');
   var listContainer = document.getElementById('leaderboard-container');
+  var typeLabelEl = document.getElementById('lb-type-label');
 
   var services = window.NibrasServices;
 
-  function getReputationScore(item) {
-    if (item && item.reputation && item.reputation.total != null)
-      return item.reputation.total;
-    return item.score || 0;
+  function getStoredUserId() {
+    try {
+      var raw = localStorage.getItem('user');
+      if (!raw) return null;
+      var user = JSON.parse(raw);
+      return user._id || user.id || null;
+    } catch (_) {
+      return null;
+    }
   }
 
-  function getLeaderboardFn(type) {
-    if (type === 'academic')
-      return services.gamificationService.getAcademicLeaderboard;
-    if (type === 'competitive')
-      return services.gamificationService.getCompetitiveLeaderboard;
-    if (type === 'community')
-      return services.gamificationService.getCommunityLeaderboard;
-    return services.gamificationService.getLeaderboard;
+  function getStoredUserName() {
+    try {
+      var raw = localStorage.getItem('user');
+      if (!raw) return 'You';
+      var user = JSON.parse(raw);
+      return user.name || user.username || 'You';
+    } catch (_) {
+      return 'You';
+    }
   }
 
-  function getMyRankFn(type) {
-    if (type === 'overall' || !type)
-      return services.gamificationService.getMyLeaderboardRank;
-    return null;
+  function buildFilters() {
+    return {
+      type: currentState.type,
+      period: currentState.period,
+      scope: currentState.scope,
+      page: currentState.page,
+      limit: 20,
+    };
   }
 
   function loadLeaderboard() {
-    var type = currentState.type;
-    var period = currentState.period;
-    var scope = currentState.scope;
-    var page = currentState.page;
+    if (!services || !services.gamificationService) return;
 
-    var lbFn = getLeaderboardFn(type);
-    var myFn = getMyRankFn(type);
-
-    var promises = [
-      lbFn({ period: period, scope: scope, page: page, limit: 20 }).catch(
-        function (err) {
-          console.error('[Leaderboard] Error fetching:', err?.message || err);
-          return null;
-        },
-      ),
-    ];
-
-    if (myFn) {
-      promises.push(
-        myFn({ period: period, scope: scope }).catch(function () {
-          return null;
-        }),
-      );
-    } else {
-      promises.push(Promise.resolve(null));
+    if (typeLabelEl) {
+      typeLabelEl.textContent = TYPE_LABELS[currentState.type] || 'Overall';
     }
-    promises.push(
-      services.reputationService.getMyReputation().catch(function () {
+
+    var filters = buildFilters();
+
+    Promise.all([
+      services.gamificationService.getLeaderboard(filters).catch(function (err) {
+        console.error('[Leaderboard] Error fetching:', err?.message || err);
+        return { entries: [], total: 0, page: 1, limit: 20 };
+      }),
+      services.gamificationService.getMyLeaderboardRank(filters).catch(function () {
         return null;
       }),
-    );
+    ]).then(function (results) {
+      var lbData = results[0] || { entries: [], total: 0, page: 1, limit: 20 };
+      var myData = results[1] || null;
 
-    Promise.all(promises).then(async function (results) {
-      var lbRes = results[0];
-      var myRes = results[1];
-      var repRes = results[2];
+      var entries = lbData.entries || [];
+      var total = lbData.total || 0;
+      var page = lbData.page || 1;
+      var limit = lbData.limit || 20;
+      var totalPages = limit > 0 ? Math.ceil(total / limit) : 1;
 
-      var lbData = (lbRes && (lbRes.data || lbRes)) || null;
-      var myData = (myRes && (myRes.data || myRes)) || null;
-
-      var entries = (lbData && lbData.entries) || [];
-
-      if (!entries.length && services.gamificationService) {
-        try {
-          var fbFn = getLeaderboardFn(type);
-          var fbRes = await fbFn({ period: period, scope: scope });
-          var fbData = (fbRes && (fbRes.data || fbRes)) || null;
-          if (fbData && fbData.entries) entries = fbData.entries;
-        } catch (_) {}
-      }
-
-      if (entries.length) {
-        entries = entries.filter(function (e) {
-          return (e.user?.role || '').toLowerCase() === 'student';
-        });
-        entries.forEach(function (e, i) {
-          e.rank = i + 1;
-        });
-      }
-
-      var currentUser = myData || null;
-      var pagination = (lbData && lbData.pagination) || null;
-
-      var totalReputation = 0;
-      if (repRes && repRes.data) totalReputation = repRes.data.total || 0;
-      else if (repRes && repRes.total) totalReputation = repRes.total;
-      if (!totalReputation && currentUser && currentUser.reputation)
-        totalReputation = currentUser.reputation.total || 0;
-
-      var storedUser = null;
-      try {
-        var raw = localStorage.getItem('user');
-        if (raw) storedUser = JSON.parse(raw);
-      } catch (_) {}
-
-      var userName =
-        (storedUser && storedUser.name) ||
-        (currentUser && currentUser.name) ||
-        'You';
+      var currentUserId = getStoredUserId();
+      var userName = getStoredUserName();
       var userInitials = userName
         .split(' ')
         .map(function (w) {
@@ -131,9 +98,18 @@ window.NibrasReact.run(function () {
         .toUpperCase()
         .slice(0, 2);
 
+      var displayScore =
+        myData && myData.lifetimeScore != null
+          ? myData.lifetimeScore
+          : myData && myData.score != null
+            ? myData.score
+            : 0;
+      if (currentState.period !== 'all-time' && myData && myData.score != null) {
+        displayScore = myData.score;
+      }
+
       if (userContainer) {
-        var uRank =
-          currentUser && currentUser.rank != null ? currentUser.rank : '-';
+        var uRank = myData && myData.rank != null ? myData.rank : '-';
         userContainer.innerHTML = [
           '<div class="ur-left">',
           '<div class="ur-avatar">' + escapeHtml(userInitials) + '</div>',
@@ -143,7 +119,7 @@ window.NibrasReact.run(function () {
             ' <span class="ur-badge">student</span></h3></div>',
           '</div>',
           '<div class="ur-right">',
-          '<div class="ur-points">' + totalReputation + '</div>',
+          '<div class="ur-points">' + displayScore + '</div>',
           '<span class="ur-sub">reputation points</span>',
           '</div>',
         ].join('');
@@ -151,7 +127,7 @@ window.NibrasReact.run(function () {
 
       if (listContainer) {
         listContainer.innerHTML = '';
-        if (!entries || entries.length === 0) {
+        if (!entries.length) {
           listContainer.innerHTML =
             '<p style="color:var(--text-secondary);padding:1rem;text-align:center;">No leaderboard entries yet. Start earning points!</p>';
           return;
@@ -159,7 +135,7 @@ window.NibrasReact.run(function () {
 
         entries.forEach(function (item) {
           var rank = item.rank || 0;
-          var entryName = item.user?.name || item.name || 'User';
+          var entryName = item.username || item.user?.name || item.name || 'User';
           var initials = entryName
             .split(' ')
             .map(function (w) {
@@ -168,19 +144,21 @@ window.NibrasReact.run(function () {
             .join('')
             .toUpperCase()
             .slice(0, 2);
-          var repScore = getReputationScore(item);
-          var role = 'student';
+          var repScore = item.score != null ? item.score : 0;
           var meta = '';
-          if (item.activeDays) meta += item.activeDays + ' active days';
-          if (item.reputation && item.reputation.breakdown) {
-            var brk = item.reputation.breakdown;
-            var parts = [];
-            if (brk.course) parts.push('Course: ' + brk.course);
-            if (brk.community) parts.push('Community: ' + brk.community);
-            if (brk.problem) parts.push('Problems: ' + brk.problem);
-            if (brk.contest) parts.push('Contests: ' + brk.contest);
-            if (parts.length)
-              meta = (meta ? meta + ' &bull; ' : '') + parts.join(' | ');
+          if (
+            currentState.period !== 'all-time' &&
+            item.lifetimeScore != null &&
+            item.lifetimeScore !== repScore
+          ) {
+            meta = 'Lifetime: ' + item.lifetimeScore;
+          }
+          if (item.badges) {
+            meta =
+              (meta ? meta + ' \u2022 ' : '') + item.badges + ' badges';
+          }
+          if (item.level) {
+            meta = (meta ? meta + ' \u2022 ' : '') + 'Level ' + item.level;
           }
 
           var rankHtml = '<div class="rank-box">#' + rank + '</div>';
@@ -194,8 +172,14 @@ window.NibrasReact.run(function () {
             rankHtml =
               '<div class="rank-box"><i class="fa-solid fa-gem rank-icon bronze"></i></div>';
 
+          var avatarHtml = item.avatarUrl
+            ? '<img src="' +
+              escapeHtml(item.avatarUrl) +
+              '" alt="" class="lb-avatar" style="object-fit:cover;">'
+            : '<div class="lb-avatar">' + escapeHtml(initials) + '</div>';
+
           var isMe =
-            userName === entryName
+            currentUserId && item.userId === currentUserId
               ? 'style="border: 2px solid var(--accent-blue);"'
               : '';
 
@@ -203,13 +187,11 @@ window.NibrasReact.run(function () {
             '<div class="lb-row" ' + isMe + '>',
             '<div class="lb-left">',
             rankHtml,
-            '<div class="lb-avatar">' + escapeHtml(initials) + '</div>',
+            avatarHtml,
             '<div class="lb-user-info">',
             '<h4>' +
               escapeHtml(entryName) +
-              ' <span class="ur-badge" style="font-size:0.7rem">' +
-              role +
-              '</span></h4>',
+              ' <span class="ur-badge" style="font-size:0.7rem">student</span></h4>',
             '<span class="lb-meta">' + escapeHtml(meta) + '</span>',
             '</div>',
             '</div>',
@@ -221,25 +203,25 @@ window.NibrasReact.run(function () {
           ].join('');
         });
 
-        if (pagination && pagination.totalPages > 1) {
+        if (totalPages > 1) {
           var pagHtml =
             '<div class="pagination" style="display:flex;justify-content:center;gap:0.5rem;padding:1rem;">';
-          if (pagination.page > 1) {
+          if (page > 1) {
             pagHtml +=
               '<button class="pill-btn active" data-page="' +
-              (pagination.page - 1) +
+              (page - 1) +
               '">Prev</button>';
           }
           pagHtml +=
             '<span style="padding:0.5rem;color:var(--text-secondary)">Page ' +
-            pagination.page +
+            page +
             ' of ' +
-            pagination.totalPages +
+            totalPages +
             '</span>';
-          if (pagination.page < pagination.totalPages) {
+          if (page < totalPages) {
             pagHtml +=
               '<button class="pill-btn active" data-page="' +
-              (pagination.page + 1) +
+              (page + 1) +
               '">Next</button>';
           }
           pagHtml += '</div>';
@@ -247,7 +229,7 @@ window.NibrasReact.run(function () {
 
           listContainer.querySelectorAll('[data-page]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-              currentState.page = parseInt(this.getAttribute('data-page'));
+              currentState.page = parseInt(this.getAttribute('data-page'), 10);
               loadLeaderboard();
             });
           });

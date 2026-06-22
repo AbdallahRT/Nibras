@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, ReputationCategory } from '@prisma/client';
 import {
   BADGE_BY_CODE,
   BADGE_CATALOG,
@@ -65,6 +65,7 @@ export type LeaderboardFilters = {
   period?: 'all' | 'month' | 'week' | 'today';
   scope?: 'global' | 'course' | 'cohort';
   courseId?: string;
+  category?: ReputationCategory;
   page?: number;
   limit?: number;
 };
@@ -417,11 +418,13 @@ export class GamificationService {
     const period = filters.period ?? 'week';
     const scope = filters.scope ?? 'global';
     const courseId = filters.courseId ?? '';
+    const category = filters.category ?? '';
     const cacheKey = buildLeaderboardCacheKey(
       requesterId,
       period,
       scope,
       courseId,
+      category,
       page,
       limit,
     );
@@ -443,6 +446,7 @@ export class GamificationService {
       since?: Date | null;
       until?: Date;
       scopeUserIds?: string[] | null;
+      category?: ReputationCategory;
     },
   ): Promise<Map<string, number>> {
     if (userIds.length === 0) return new Map();
@@ -450,7 +454,12 @@ export class GamificationService {
     const where: {
       userId: { in: string[] };
       createdAt?: { gte?: Date; lt?: Date };
+      category?: ReputationCategory;
     } = { userId: { in: userIds } };
+
+    if (opts.category) {
+      where.category = opts.category;
+    }
 
     if (opts.since) {
       where.createdAt = { gte: opts.since };
@@ -477,11 +486,13 @@ export class GamificationService {
   private buildLeaderboardWhereSql(
     since: Date | null,
     scopeUserIds: string[] | null,
+    category?: ReputationCategory,
   ): Prisma.Sql {
     const parts: Prisma.Sql[] = [];
     if (since) parts.push(Prisma.sql`"createdAt" >= ${since}`);
     if (scopeUserIds)
       parts.push(Prisma.sql`"userId" IN (${Prisma.join(scopeUserIds)})`);
+    if (category) parts.push(Prisma.sql`"category" = ${category}`);
     parts.push(
       Prisma.sql`"userId" NOT IN (SELECT id FROM "User" WHERE "showOnLeaderboard" = false)`,
     );
@@ -493,11 +504,16 @@ export class GamificationService {
     scopeUserIds: string[] | null,
     page: number,
     limit: number,
+    category?: ReputationCategory,
   ): Promise<{
     rows: Array<{ userId: string; score: number; rank: number }>;
     total: number;
   }> {
-    const whereSql = this.buildLeaderboardWhereSql(since, scopeUserIds);
+    const whereSql = this.buildLeaderboardWhereSql(
+      since,
+      scopeUserIds,
+      category,
+    );
     const offset = (page - 1) * limit;
 
     const countRows = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
@@ -549,6 +565,7 @@ export class GamificationService {
     const limit = filters.limit;
     const period = filters.period ?? 'week';
     const since = periodStart(period);
+    const category = filters.category;
     const scopeUserIds = await this.resolveScopeUserIds(
       requesterId,
       filters.scope ?? 'global',
@@ -560,6 +577,7 @@ export class GamificationService {
       scopeUserIds,
       page,
       limit,
+      category,
     );
     const pageUserIds = pageSlice.map((r) => r.userId);
 
@@ -579,11 +597,12 @@ export class GamificationService {
         where: { userId: { in: pageUserIds } },
         _count: { id: true },
       }),
-      this.sumReputationByUsers(pageUserIds, {}),
+      this.sumReputationByUsers(pageUserIds, { category }),
       prevRange
         ? this.sumReputationByUsers(pageUserIds, {
             since: prevRange.start,
             until: prevRange.end,
+            category,
           })
         : Promise.resolve(new Map<string, number>()),
     ]);
@@ -629,39 +648,60 @@ export class GamificationService {
   }> {
     const period = filters.period ?? 'week';
     const since = periodStart(period);
+    const category = filters.category;
     const scopeUserIds = await this.resolveScopeUserIds(
       userId,
       filters.scope ?? 'global',
       filters.courseId,
     );
 
-    const where: { createdAt?: { gte: Date }; userId?: { in: string[] } } = {};
+    const where: {
+      createdAt?: { gte: Date; lt?: Date };
+      userId: string;
+      category?: ReputationCategory;
+    } = { userId };
     if (since) where.createdAt = { gte: since };
-    if (scopeUserIds) where.userId = { in: scopeUserIds };
+    if (category) where.category = category;
 
     const prevRange = previousPeriodRange(period);
+
+    const lifetimeWhere: {
+      userId: string;
+      category?: ReputationCategory;
+    } = { userId };
+    if (category) lifetimeWhere.category = category;
+
+    const groupedWhere: {
+      createdAt?: { gte: Date };
+      userId?: { in: string[] };
+      category?: ReputationCategory;
+    } = {};
+    if (since) groupedWhere.createdAt = { gte: since };
+    if (scopeUserIds) groupedWhere.userId = { in: scopeUserIds };
+    if (category) groupedWhere.category = category;
 
     const [myAgg, grouped, badgeCount, lifetimeAgg, prevAgg] =
       await Promise.all([
         this.prisma.reputationEvent.aggregate({
-          where: { ...where, userId },
+          where,
           _sum: { delta: true },
         }),
         this.prisma.reputationEvent.groupBy({
           by: ['userId'],
-          where,
+          where: groupedWhere,
           _sum: { delta: true },
           orderBy: { _sum: { delta: 'desc' } },
         }),
         this.prisma.userBadge.count({ where: { userId } }),
         this.prisma.reputationEvent.aggregate({
-          where: { userId },
+          where: lifetimeWhere,
           _sum: { delta: true },
         }),
         prevRange
           ? this.prisma.reputationEvent.aggregate({
               where: {
                 userId,
+                ...(category ? { category } : {}),
                 createdAt: { gte: prevRange.start, lt: prevRange.end },
               },
               _sum: { delta: true },

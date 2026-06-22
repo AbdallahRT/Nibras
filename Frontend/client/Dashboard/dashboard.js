@@ -1152,38 +1152,17 @@ async function loadGamificationAchievements() {
   try {
     if (!window.NibrasServices?.gamificationService) return;
 
-    var badgesRes = await window.NibrasServices.gamificationService
-      .getAllBadges()
+    var dashboard = await window.NibrasServices.gamificationService
+      .getAchievementsDashboard({ sync: true })
       .catch(function () {
         return null;
       });
-    var awardRes = await window.NibrasServices.gamificationService
-      .checkAwardBadges()
-      .catch(function () {
-        return null;
-      });
-    var repRes = window.NibrasServices.reputationService
-      ? await window.NibrasServices.reputationService
-          .getMyReputation()
-          .catch(function () {
-            return null;
-          })
-      : null;
 
-    var allBadges = (badgesRes && (badgesRes.data || badgesRes)) || [];
-    if (!Array.isArray(allBadges)) allBadges = [];
-    var awardedIds = new Set();
-    if (awardRes) {
-      var awarded = awardRes.data || awardRes;
-      if (Array.isArray(awarded)) {
-        awarded.forEach(function (b) {
-          if (b && b._id) awardedIds.add(b._id.toString());
-        });
-      }
-    }
-    var repTotal = 0;
-    if (repRes && repRes.data) repTotal = repRes.data.total || 0;
-    else if (repRes && repRes.total) repTotal = repRes.total;
+    var allBadges = Array.isArray(dashboard?.badges) ? dashboard.badges : [];
+    var earnedBadges = allBadges.filter(function (b) {
+      return !!b.earnedAt;
+    });
+    var repTotal = dashboard?.reputation?.total || 0;
 
     var repBadge = document.querySelector('.rep-badge');
     if (repBadge && repTotal > 0) repBadge.textContent = repTotal;
@@ -1192,20 +1171,22 @@ async function loadGamificationAchievements() {
     if (!achieveContainer) return;
     achieveContainer.innerHTML = '';
 
-    if (awardedIds.size > 0) {
-      allBadges
-        .filter(function (b) {
-          return awardedIds.has(b._id.toString());
-        })
-        .slice(0, 5)
-        .forEach(function (b) {
-          achieveContainer.innerHTML +=
-            '<div class="achieve-item"><i class="' +
-            (b.badgeIcon || 'fa-solid fa-medal') +
-            ' achieve-icon"></i><span class="achieve-text">' +
-            escapeHtml(b.name || 'Badge') +
-            '</span></div>';
-        });
+    if (earnedBadges.length > 0) {
+      earnedBadges.slice(0, 5).forEach(function (b) {
+        var icon = b.iconUrl || 'fa-solid fa-medal';
+        var iconHtml =
+          icon.startsWith('http') ||
+          icon.startsWith('/') ||
+          icon.startsWith('data:')
+            ? '<img src="' + escapeHtml(icon) + '" alt="" class="achieve-icon" style="width:1rem;height:1rem;">'
+            : '<i class="' + escapeHtml(icon) + ' achieve-icon"></i>';
+        achieveContainer.innerHTML +=
+          '<div class="achieve-item">' +
+          iconHtml +
+          '<span class="achieve-text">' +
+          escapeHtml(b.name || 'Badge') +
+          '</span></div>';
+      });
     } else {
       achieveContainer.innerHTML =
         '<div class="achieve-item empty-achievements"><span class="achieve-text">' +

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ReputationCategory } from '@prisma/client';
 import { requireUser } from '../../lib/auth';
 import { AppStore } from '../../store';
 import { GamificationService } from './service';
@@ -18,6 +18,18 @@ function parseLeaderboardScope(raw?: string): 'global' | 'course' | 'cohort' {
     return raw as 'global' | 'course' | 'cohort';
   }
   return 'global';
+}
+
+function parseLeaderboardCategory(
+  raw?: string,
+): ReputationCategory | undefined {
+  if (
+    raw &&
+    ['course', 'community', 'problem', 'contest', 'badge'].includes(raw)
+  ) {
+    return raw as ReputationCategory;
+  }
+  return undefined;
 }
 
 export function registerGamificationRoutes(
@@ -79,6 +91,7 @@ export function registerGamificationRoutes(
         period?: string;
         scope?: string;
         courseId?: string;
+        category?: string;
         page?: string;
         limit?: string;
       };
@@ -89,12 +102,14 @@ export function registerGamificationRoutes(
       );
       const period = parseLeaderboardPeriod(query.period);
       const scope = parseLeaderboardScope(query.scope);
+      const category = parseLeaderboardCategory(query.category);
 
       try {
         return await gamification.getLeaderboard(auth.user.id, {
           period,
           scope,
           courseId: query.courseId,
+          category,
           page,
           limit,
         });
@@ -125,15 +140,18 @@ export function registerGamificationRoutes(
         period?: string;
         scope?: string;
         courseId?: string;
+        category?: string;
       };
       const period = parseLeaderboardPeriod(query.period);
       const scope = parseLeaderboardScope(query.scope);
+      const category = parseLeaderboardCategory(query.category);
 
       try {
         return await gamification.getMyLeaderboardRank(auth.user.id, {
           period,
           scope,
           courseId: query.courseId,
+          category,
         });
       } catch (err) {
         const error = err as {

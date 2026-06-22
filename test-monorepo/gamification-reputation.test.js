@@ -42,10 +42,12 @@ test('leaderboard cache key includes requester id', () => {
     'week',
     'course',
     'course_1',
+    'community',
     1,
     25,
   );
   assert.match(key, /^nibras:leaderboard:user_a:/);
+  assert.match(key, /:community:1:25$/);
 });
 
 test('assignCompetitionRanks handles ties', () => {
@@ -213,6 +215,40 @@ test('ReputationService sync is idempotent for duplicate sources', async () => {
   await service.syncReputationFromActivity(userId);
   await service.syncReputationFromActivity(userId);
   assert.equal(store.size, 1);
+});
+
+test('GamificationService getMyLeaderboardRank filters by category', async () => {
+  const userId = 'user_cat';
+  const aggregateCalls = [];
+
+  const prisma = {
+    courseMembership: { findFirst: async () => null },
+    user: { findUnique: async () => ({ yearLevel: 1 }), findMany: async () => [] },
+    reputationEvent: {
+      aggregate: async ({ where }) => {
+        aggregateCalls.push(where);
+        return { _sum: { delta: 40 } };
+      },
+      groupBy: async () => [
+        { userId, _sum: { delta: 40 } },
+        { userId: 'other', _sum: { delta: 10 } },
+      ],
+    },
+    userBadge: { count: async () => 2 },
+  };
+
+  const service = new GamificationService(prisma);
+  const result = await service.getMyLeaderboardRank(userId, {
+    period: 'all',
+    category: 'course',
+  });
+
+  assert.equal(result.rank, 1);
+  assert.equal(result.score, 40);
+  assert.ok(
+    aggregateCalls.some((where) => where.category === 'course'),
+    'expected category filter on reputation aggregates',
+  );
 });
 
 test('unauthenticated gamification returns 401', async () => {
