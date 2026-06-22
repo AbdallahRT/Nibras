@@ -24,7 +24,7 @@
     "build:platform": "npm run db:generate && npm run build -w @nibras/contracts && npm run build -w @nibras/daily-problem && npm run build -w @nibras/core && npm run build -w @nibras/github && npm run build -w @nibras/grading && npm run build -w @nibras/api && npm run build -w @nibras/proxy && npm run build -w @nibras/cli && npm run build -w @nibras/worker",
     "build:all": "npm run build:platform && npm run build",
     "build:cli:package": "npm --prefix packages/contracts run build && npm --prefix packages/core run build && npm --prefix apps/cli run build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "npx prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
