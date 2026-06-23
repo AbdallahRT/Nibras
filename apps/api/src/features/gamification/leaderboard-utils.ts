@@ -5,10 +5,11 @@ export function buildLeaderboardCacheKey(
   period: string,
   scope: string,
   courseId: string,
+  category: string,
   page: number,
   limit: number,
 ): string {
-  return `nibras:leaderboard:${requesterId}:${period}:${scope}:${courseId}:${page}:${limit}`;
+  return `nibras:leaderboard:${requesterId}:${period}:${scope}:${courseId}:${category}:${page}:${limit}`;
 }
 
 export function periodStart(period: LeaderboardFilters['period']): Date | null {

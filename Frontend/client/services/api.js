@@ -52,6 +52,81 @@
     return payload;
   };
 
+  const normalizeBadgesResponse = (payload) => {
+    const raw = unwrapApiData(payload) || payload;
+    if (Array.isArray(raw?.badges)) return raw.badges;
+    if (Array.isArray(raw?.awarded)) return raw.awarded;
+    if (Array.isArray(raw)) return raw;
+    return [];
+  };
+
+  const normalizeLeaderboardResponse = (payload) => {
+    const raw = unwrapApiData(payload) || payload || {};
+    return {
+      entries: Array.isArray(raw.entries) ? raw.entries : [],
+      total: Number(raw.total) || 0,
+      page: Number(raw.page) || 1,
+      limit: Number(raw.limit) || 25,
+    };
+  };
+
+  const normalizeReputationResponse = (payload) => {
+    const raw = unwrapApiData(payload) || payload || {};
+    return {
+      total: Number(raw.total) || 0,
+      weeklyDelta: Number(raw.weeklyDelta) || 0,
+      monthlyDelta: Number(raw.monthlyDelta) || 0,
+      rank: raw.rank != null ? raw.rank : null,
+      percentile: raw.percentile != null ? raw.percentile : null,
+      levelLabel: raw.levelLabel || '',
+      tier: raw.tier || '',
+      breakdown: Array.isArray(raw.breakdown) ? raw.breakdown : [],
+      history: Array.isArray(raw.history) ? raw.history : [],
+    };
+  };
+
+  const mapLeaderboardPeriod = (uiPeriod) => {
+    const map = {
+      'all-time': 'all',
+      all: 'all',
+      weekly: 'week',
+      week: 'week',
+      monthly: 'month',
+      month: 'month',
+      today: 'today',
+    };
+    return map[String(uiPeriod || '').toLowerCase()] || 'week';
+  };
+
+  const mapLeaderboardCategory = (type) => {
+    const map = {
+      overall: null,
+      academic: 'course',
+      competitive: 'contest',
+      community: 'community',
+      practice: 'problem',
+    };
+    const key = String(type || 'overall').toLowerCase();
+    return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
+  };
+
+  const buildLeaderboardParams = (filters = {}) => {
+    const { period, scope, courseId, page, limit, category, type } = filters;
+    const params = {};
+    const apiPeriod = mapLeaderboardPeriod(period);
+    if (apiPeriod) params.period = apiPeriod;
+    if (scope) params.scope = scope;
+    if (courseId) params.courseId = courseId;
+    if (page) params.page = page;
+    if (limit) params.limit = limit;
+    const apiCategory =
+      category != null && category !== ''
+        ? category
+        : mapLeaderboardCategory(type);
+    if (apiCategory) params.category = apiCategory;
+    return params;
+  };
+
   const normalizeCommunityThreadList = (payload) => {
     const raw = unwrapApiData(payload) || payload || {};
     const threads = Array.isArray(raw.items)
@@ -3448,6 +3523,15 @@
       );
     },
 
+    async createProject(body) {
+      return apiFetch('/v1/tracking/projects', {
+        service: 'tracking',
+        method: 'POST',
+        auth: true,
+        body,
+      });
+    },
+
     /**
      * Get project details
      * @param {string} projectId
@@ -3459,6 +3543,40 @@
         {
           service: 'tracking',
           method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async updateProject(projectId, body) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}`,
+        {
+          service: 'tracking',
+          method: 'PATCH',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async publishProject(projectId) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/publish`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+        },
+      );
+    },
+
+    async unpublishProject(projectId) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/unpublish`,
+        {
+          service: 'tracking',
+          method: 'POST',
           auth: true,
         },
       );
@@ -3480,12 +3598,93 @@
       );
     },
 
-    async getCatalog() {
-      return apiFetch('/v1/tracking/catalog', {
+    async createMilestone(projectId, body) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/milestones`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async listCourseTemplates(courseId) {
+      return apiFetch(
+        `/v1/tracking/courses/${encodeURIComponent(String(courseId))}/templates`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async createCourseTemplate(courseId, body) {
+      return apiFetch(
+        `/v1/tracking/courses/${encodeURIComponent(String(courseId))}/templates`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async getCatalog(filters = {}) {
+      return apiFetch(`/v1/tracking/catalog${toQueryString(filters)}`, {
         service: 'tracking',
         method: 'GET',
         auth: true,
       });
+    },
+
+    async expressInterest(projectId, body = {}) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/interests`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async getMyInterest(projectId) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/interests/me`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async listInterests(projectId) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/interests`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async reviewInterest(projectId, interestId, body) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/interests/${encodeURIComponent(String(interestId))}`,
+        {
+          service: 'tracking',
+          method: 'PATCH',
+          auth: true,
+          body,
+        },
+      );
     },
 
     async submitApplication(projectId, data) {
@@ -3496,6 +3695,205 @@
           method: 'POST',
           auth: true,
           body: data,
+        },
+      );
+    },
+
+    async getMyApplication(projectId) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/applications/me`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async listApplications(projectId) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/applications`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async generateTeamFormation(projectId, body = {}) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/team-formation/generate`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async lockTeams(projectId, body = {}) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/team-formation/lock`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async listTeams(projectId) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/teams`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async updateTeam(projectId, teamId, body) {
+      return apiFetch(
+        `/v1/tracking/projects/${encodeURIComponent(String(projectId))}/teams/${encodeURIComponent(String(teamId))}`,
+        {
+          service: 'tracking',
+          method: 'PATCH',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async listMilestoneSubmissions(milestoneId) {
+      return apiFetch(
+        `/v1/tracking/milestones/${encodeURIComponent(String(milestoneId))}/submissions`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async createSubmission(milestoneId, body) {
+      return apiFetch(
+        `/v1/tracking/milestones/${encodeURIComponent(String(milestoneId))}/submissions`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async getSubmission(submissionId) {
+      return apiFetch(
+        `/v1/tracking/submissions/${encodeURIComponent(String(submissionId))}`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async patchSubmission(submissionId, body) {
+      return apiFetch(
+        `/v1/tracking/submissions/${encodeURIComponent(String(submissionId))}`,
+        {
+          service: 'tracking',
+          method: 'PATCH',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async cancelSubmission(submissionId) {
+      return apiFetch(
+        `/v1/tracking/submissions/${encodeURIComponent(String(submissionId))}`,
+        {
+          service: 'tracking',
+          method: 'DELETE',
+          auth: true,
+        },
+      );
+    },
+
+    async getReview(submissionId) {
+      return apiFetch(
+        `/v1/tracking/submissions/${encodeURIComponent(String(submissionId))}/review`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
+        },
+      );
+    },
+
+    async submitReview(submissionId, body) {
+      return apiFetch(
+        `/v1/tracking/submissions/${encodeURIComponent(String(submissionId))}/review`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async patchReview(submissionId, body) {
+      return apiFetch(
+        `/v1/tracking/submissions/${encodeURIComponent(String(submissionId))}/review`,
+        {
+          service: 'tracking',
+          method: 'PATCH',
+          auth: true,
+          body,
+        },
+      );
+    },
+
+    async retrySubmission(submissionId) {
+      return apiFetch(
+        `/v1/tracking/submissions/${encodeURIComponent(String(submissionId))}/retry`,
+        {
+          service: 'tracking',
+          method: 'POST',
+          auth: true,
+        },
+      );
+    },
+
+    async getReviewQueue(filters = {}) {
+      return apiFetch(`/v1/tracking/review-queue${toQueryString(filters)}`, {
+        service: 'tracking',
+        method: 'GET',
+        auth: true,
+      });
+    },
+
+    async getActivity() {
+      return apiFetch('/v1/tracking/activity', {
+        service: 'tracking',
+        method: 'GET',
+        auth: true,
+      });
+    },
+
+    async getSubmissionCommits(submissionId) {
+      return apiFetch(
+        `/v1/tracking/submissions/${encodeURIComponent(String(submissionId))}/commits`,
+        {
+          service: 'tracking',
+          method: 'GET',
+          auth: true,
         },
       );
     },
@@ -4267,46 +4665,72 @@
   // Gamification Service (admin service → /api/gamification/*)
   // ============================================================
   const gamificationService = {
+    async getAchievementsDashboard(opts = {}) {
+      const params = {};
+      if (opts.sync) params.sync = 'true';
+      const res = await apiFetch(
+        `/gamification/achievements-dashboard${toQueryString(params)}`,
+        {
+          service: 'admin',
+          method: 'GET',
+          auth: true,
+        },
+      );
+      const raw = unwrapApiData(res) || res || {};
+      return {
+        badges: normalizeBadgesResponse(raw.badges != null ? { badges: raw.badges } : raw),
+        reputation: normalizeReputationResponse(raw.reputation || {}),
+        newlyAwarded: normalizeBadgesResponse(
+          raw.newlyAwarded != null ? { awarded: raw.newlyAwarded } : [],
+        ),
+      };
+    },
     async getAllBadges() {
-      return apiFetch('/gamification/all-badges', {
+      const res = await apiFetch('/gamification/all-badges', {
         service: 'admin',
         method: 'GET',
         auth: true,
       });
+      const raw = unwrapApiData(res) || res || {};
+      return normalizeBadgesResponse(
+        raw.badges != null ? { badges: raw.badges } : res,
+      );
     },
     async checkAwardBadges(studentId) {
-      return apiFetch('/gamification/check-award', {
+      const res = await apiFetch('/gamification/check-award', {
         service: 'admin',
         method: 'POST',
         auth: true,
         body: studentId ? { studentId } : {},
       });
+      const raw = unwrapApiData(res) || res || {};
+      return normalizeBadgesResponse(
+        raw.awarded != null ? { awarded: raw.awarded } : res,
+      );
     },
     async getLeaderboard(filters = {}) {
-      const { period, scope, courseId, page, limit } = filters;
-      const params = {};
-      if (period) params.period = period;
-      if (scope) params.scope = scope;
-      if (courseId) params.courseId = courseId;
-      if (page) params.page = page;
-      if (limit) params.limit = limit;
-      return apiFetch(`/gamification/leaderboards${toQueryString(params)}`, {
-        service: 'admin',
-        method: 'GET',
-        auth: true,
-      });
+      const params = buildLeaderboardParams(filters);
+      const res = await apiFetch(
+        `/gamification/leaderboards${toQueryString(params)}`,
+        {
+          service: 'admin',
+          method: 'GET',
+          auth: true,
+        },
+      );
+      return normalizeLeaderboardResponse(res);
     },
     async getMyLeaderboardRank(filters = {}) {
-      const { period, scope, courseId } = filters;
-      const params = {};
-      if (period) params.period = period;
-      if (scope) params.scope = scope;
-      if (courseId) params.courseId = courseId;
-      return apiFetch(`/gamification/leaderboards/me${toQueryString(params)}`, {
-        service: 'admin',
-        method: 'GET',
-        auth: true,
-      });
+      const params = buildLeaderboardParams(filters);
+      const res = await apiFetch(
+        `/gamification/leaderboards/me${toQueryString(params)}`,
+        {
+          service: 'admin',
+          method: 'GET',
+          auth: true,
+        },
+      );
+      return unwrapApiData(res) || res || {};
     },
     async getLeaderboardConfig() {
       return apiFetch('/gamification/leaderboards/config', {
@@ -4325,11 +4749,7 @@
     },
 
     async getBadges() {
-      return apiFetch('/badges', {
-        service: 'admin',
-        method: 'GET',
-        auth: true,
-      });
+      return gamificationService.getAllBadges();
     },
 
     async createBadge(data) {
@@ -4371,40 +4791,19 @@
     },
 
     async getAcademicLeaderboard(filters = {}) {
-      const { period, page, limit } = filters;
-      const params = {};
-      if (period) params.period = period;
-      if (page) params.page = page;
-      if (limit) params.limit = limit;
-      return apiFetch(`/leaderboards/academic${toQueryString(params)}`, {
-        service: 'admin',
-        method: 'GET',
-        auth: true,
-      });
+      return gamificationService.getLeaderboard(
+        Object.assign({}, filters, { type: 'academic' }),
+      );
     },
     async getCompetitiveLeaderboard(filters = {}) {
-      const { period, page, limit } = filters;
-      const params = {};
-      if (period) params.period = period;
-      if (page) params.page = page;
-      if (limit) params.limit = limit;
-      return apiFetch(`/leaderboards/competitive${toQueryString(params)}`, {
-        service: 'admin',
-        method: 'GET',
-        auth: true,
-      });
+      return gamificationService.getLeaderboard(
+        Object.assign({}, filters, { type: 'competitive' }),
+      );
     },
     async getCommunityLeaderboard(filters = {}) {
-      const { period, page, limit } = filters;
-      const params = {};
-      if (period) params.period = period;
-      if (page) params.page = page;
-      if (limit) params.limit = limit;
-      return apiFetch(`/leaderboards/community${toQueryString(params)}`, {
-        service: 'admin',
-        method: 'GET',
-        auth: true,
-      });
+      return gamificationService.getLeaderboard(
+        Object.assign({}, filters, { type: 'community' }),
+      );
     },
   };
 
@@ -4412,22 +4811,25 @@
   // Reputation Service (admin service → /api/reputation/*)
   // ============================================================
   const reputationService = {
-    async getMyReputation() {
-      return apiFetch('/reputation/me', {
-        service: 'admin',
-        method: 'GET',
-        auth: true,
-      });
+    async getMyReputation(opts = {}) {
+      const params = {};
+      if (opts.sync) params.sync = 'true';
+      const res = await apiFetch(
+        `/reputation/me${toQueryString(params)}`,
+        {
+          service: 'admin',
+          method: 'GET',
+          auth: true,
+        },
+      );
+      return normalizeReputationResponse(res);
     },
 
     async getActivityFeed(limit) {
-      const params = {};
-      if (limit) params.limit = limit;
-      return apiFetch(`/reputation/activity${toQueryString(params)}`, {
-        service: 'admin',
-        method: 'GET',
-        auth: true,
-      });
+      const rep = await reputationService.getMyReputation();
+      const history = Array.isArray(rep.history) ? rep.history : [];
+      const max = limit ? Math.max(1, Number(limit) || 20) : history.length;
+      return history.slice(0, max);
     },
   };
 
@@ -5020,10 +5422,21 @@
   };
 
   // ============================================================
-  // Phase 7 — Project Service
+  // Phase 7 — Project Service (deprecated — use trackingProjectService)
   // ============================================================
+  var projectServiceDeprecatedWarned = false;
+  function warnLegacyProjectService(method) {
+    if (projectServiceDeprecatedWarned) return;
+    projectServiceDeprecatedWarned = true;
+    console.warn(
+      '[NibrasServices] projectService is deprecated; migrate to trackingProjectService.',
+      method || '',
+    );
+  }
+
   const projectService = {
     async create(data) {
+      warnLegacyProjectService('create');
       return apiFetch('/projects', {
         service: 'courses',
         method: 'POST',

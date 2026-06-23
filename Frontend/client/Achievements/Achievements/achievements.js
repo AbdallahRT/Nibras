@@ -1,59 +1,6 @@
 window.NibrasReact.run(function () {
-  var STORAGE_KEY = 'nibras_earned_badges';
-
-  var BACKEND_BADGES = [
-    {
-      name: 'First Steps',
-      description: 'Solve your first problem or gain reputation.',
-      points: 10,
-      badgeIcon: '',
-    },
-    {
-      name: 'Problem Solver',
-      description: 'Solve 10 coding problems.',
-      points: 25,
-      badgeIcon: '',
-    },
-    {
-      name: '7-Day Streak',
-      description: 'Maintain a 7-day study streak.',
-      points: 30,
-      badgeIcon: '',
-    },
-    {
-      name: 'Team Player',
-      description: 'Help 5 classmates with answers.',
-      points: 20,
-      badgeIcon: '',
-    },
-    {
-      name: 'Top Contributor',
-      description: 'Post 10 answers or reach 100 reputation.',
-      points: 50,
-      badgeIcon: '',
-    },
-  ];
-
   var statsEl = document.getElementById('stats-container');
   var sectionsEl = document.getElementById('badge-sections');
-
-  function getStoredEarnedIds() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function addStoredEarnedIds(newIds) {
-    var existing = getStoredEarnedIds();
-    var all = existing.slice();
-    newIds.forEach(function (id) {
-      if (all.indexOf(id) === -1) all.push(id);
-    });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    return all;
-  }
 
   function escapeHtml(str) {
     if (!str && str !== 0) return '';
@@ -62,23 +9,40 @@ window.NibrasReact.run(function () {
     return d.innerHTML;
   }
 
-  function rarityClass(idx) {
-    var rarities = [
-      'badge-card--common',
-      'badge-card--rare',
-      'badge-card--epic',
-      'badge-card--legendary',
-    ];
-    return rarities[idx % rarities.length];
+  function rarityClass(rarity) {
+    var map = {
+      common: 'badge-card--common',
+      rare: 'badge-card--rare',
+      epic: 'badge-card--epic',
+      legendary: 'badge-card--legendary',
+    };
+    return map[String(rarity || '').toLowerCase()] || 'badge-card--common';
   }
 
   function showLoading() {
     if (statsEl)
       statsEl.innerHTML =
         '<div class="loading-skeleton" aria-hidden="true"><div class="loading-skeleton-stats loading-shimmer"></div></div>';
+    if (sectionsEl) sectionsEl.innerHTML = '';
   }
 
-  function renderStats(repTotal, totalBadges, earnedCount) {
+  function renderStatTile(o) {
+    var captionHtml = o.caption
+      ? '<span class="stat-tile-caption">' + escapeHtml(o.caption) + '</span>'
+      : '';
+    return [
+      '<div class="stat-tile">',
+      '<div class="stat-tile-head">',
+      '<i class="' + o.icon + ' stat-tile-icon"></i>',
+      '<span class="stat-tile-label">' + escapeHtml(o.label) + '</span>',
+      '</div>',
+      '<div class="stat-tile-value">' + escapeHtml(String(o.value)) + '</div>',
+      '<div class="stat-tile-foot">' + captionHtml + '</div>',
+      '</div>',
+    ].join('');
+  }
+
+  function renderStats(repTotal, totalBadges, earnedCount, legendaryCount) {
     if (!statsEl) return;
     var completionPct =
       totalBadges > 0 ? Math.round((earnedCount / totalBadges) * 100) : 0;
@@ -102,264 +66,11 @@ window.NibrasReact.run(function () {
       }),
       renderStatTile({
         icon: 'fa-solid fa-gem',
-        value: 0,
+        value: legendaryCount,
         label: 'Legendary',
         caption: 'Rarest unlocks',
       }),
     ].join('');
-  }
-
-  function renderStatTile(o) {
-    var captionHtml = o.caption
-      ? '<span class="stat-tile-caption">' + escapeHtml(o.caption) + '</span>'
-      : '';
-    return [
-      '<div class="stat-tile">',
-      '<div class="stat-tile-head">',
-      '<i class="' + o.icon + ' stat-tile-icon"></i>',
-      '<span class="stat-tile-label">' + escapeHtml(o.label) + '</span>',
-      '</div>',
-      '<div class="stat-tile-value">' + escapeHtml(String(o.value)) + '</div>',
-      '<div class="stat-tile-foot">' + captionHtml + '</div>',
-      '</div>',
-    ].join('');
-  }
-
-  function annotateBadges(allBackendBadges, earnedIds) {
-    if (!sectionsEl) return;
-
-    var backendMap = {};
-    allBackendBadges.forEach(function (b) {
-      var name = (b.name || '').trim().toLowerCase();
-      if (name) backendMap[name] = b;
-    });
-
-    var matchedNames = {};
-
-    var cards = sectionsEl.querySelectorAll('.badge-card');
-    cards.forEach(function (card) {
-      var nameEl = card.querySelector('.badge-name');
-      if (!nameEl) return;
-      var cardName = (nameEl.textContent || '').trim().toLowerCase();
-      if (!cardName) return;
-
-      var backendBadge = backendMap[cardName];
-
-      card.classList.remove(
-        'badge-card--earned',
-        'badge-card--locked',
-        'badge-card--coming-soon',
-      );
-
-      var earnedLabels = card.querySelectorAll('.badge-earned-label');
-      earnedLabels.forEach(function (el) {
-        el.remove();
-      });
-
-      if (backendBadge) {
-        matchedNames[cardName] = true;
-        var id = backendBadge._id ? backendBadge._id.toString() : '';
-        var isEarned = earnedIds.indexOf(id) >= 0;
-
-        var oldTrack = card.querySelector('.badge-progress-track');
-        var oldLabel = card.querySelector('.badge-progress-label');
-        if (oldTrack) oldTrack.remove();
-        if (oldLabel) oldLabel.remove();
-
-        if (isEarned) {
-          card.classList.add('badge-card--earned');
-          var label = document.createElement('span');
-          label.className = 'badge-progress-label badge-earned-label';
-          label.style.cssText =
-            'margin-top:4px;color:var(--primary-strong);font-weight:600;';
-          label.textContent = 'Earned';
-          card.appendChild(label);
-        } else {
-          card.classList.add('badge-card--locked');
-        }
-      } else {
-        card.classList.add('badge-card--coming-soon');
-      }
-    });
-
-    var blocks = sectionsEl.querySelectorAll(':scope > .badge-block');
-    var earnedBlock = null;
-    var lockedBlock = null;
-    for (var i = 0; i < blocks.length; i++) {
-      var title = blocks[i].querySelector('.badge-section-title');
-      if (!title) continue;
-      var text = (title.textContent || '').trim().toLowerCase();
-      if (text === 'earned') earnedBlock = blocks[i];
-      else if (text === 'locked') lockedBlock = blocks[i];
-    }
-
-    var oldComingSoon = sectionsEl.querySelector('.badge-block-coming-soon');
-    if (oldComingSoon) oldComingSoon.remove();
-
-    var earnedGrid = earnedBlock
-      ? earnedBlock.querySelector('.badge-grid')
-      : null;
-    var lockedGrid = lockedBlock
-      ? lockedBlock.querySelector('.badge-grid')
-      : null;
-
-    if (!earnedBlock) {
-      earnedBlock = createBadgeBlock('Earned', '0 unlocked');
-      sectionsEl.insertBefore(earnedBlock, sectionsEl.firstChild);
-      earnedGrid = earnedBlock.querySelector('.badge-grid');
-    }
-    if (!lockedBlock) {
-      lockedBlock = createBadgeBlock('Locked', '0 to go');
-      if (earnedBlock) {
-        sectionsEl.insertBefore(lockedBlock, earnedBlock.nextSibling);
-      } else {
-        sectionsEl.appendChild(lockedBlock);
-      }
-      lockedGrid = lockedBlock.querySelector('.badge-grid');
-    }
-
-    allBackendBadges.forEach(function (b) {
-      var name = (b.name || '').trim().toLowerCase();
-      if (!name || matchedNames[name]) return;
-
-      var id = b._id ? b._id.toString() : '';
-      var isEarned = earnedIds.indexOf(id) >= 0;
-      var grid = isEarned ? earnedGrid : lockedGrid;
-      if (!grid) return;
-
-      var card = createBadgeCardElement(
-        b,
-        allBackendBadges.indexOf(b),
-        earnedIds,
-      );
-      grid.appendChild(card);
-    });
-
-    updateSectionCounts(
-      earnedBlock,
-      lockedBlock,
-      earnedIds,
-      allBackendBadges.length,
-    );
-
-    if (
-      earnedBlock &&
-      earnedBlock.querySelectorAll('.badge-card--earned').length === 0
-    ) {
-      earnedBlock.style.display = 'none';
-    }
-    if (
-      lockedBlock &&
-      lockedBlock.querySelectorAll('.badge-card--locked').length === 0
-    ) {
-      lockedBlock.style.display = 'none';
-    }
-
-    sectionsEl.insertAdjacentHTML('beforeend', comingSoonHtml());
-  }
-
-  function createBadgeBlock(title, meta) {
-    var div = document.createElement('div');
-    div.className = 'badge-block';
-    div.innerHTML = [
-      '<div class="badge-section-head">',
-      '<h3 class="badge-section-title">' + escapeHtml(title) + '</h3>',
-      '<span class="badge-section-meta">' + escapeHtml(meta) + '</span>',
-      '</div>',
-      '<div class="panel">',
-      '<div class="badge-grid"></div>',
-      '</div>',
-      '</div>',
-    ].join('');
-    return div;
-  }
-
-  function createBadgeCardElement(item, index, earnedIds) {
-    var name = item.name || '';
-    var desc = item.description || '';
-    var id = item._id ? item._id.toString() : '';
-    var isEarned = earnedIds.indexOf(id) >= 0;
-
-    var card = document.createElement('button');
-    card.type = 'button';
-    card.className =
-      'badge-card ' +
-      rarityClass(index) +
-      ' ' +
-      (isEarned ? 'badge-card--earned' : 'badge-card--locked');
-    card.setAttribute('aria-pressed', isEarned ? 'true' : 'false');
-
-    var iconHolder = document.createElement('div');
-    iconHolder.className = 'badge-icon-holder';
-    iconHolder.innerHTML = renderIcon(item.badgeIcon);
-    card.appendChild(iconHolder);
-
-    var nameEl = document.createElement('strong');
-    nameEl.className = 'badge-name';
-    nameEl.textContent = name;
-    card.appendChild(nameEl);
-
-    var descEl = document.createElement('span');
-    descEl.className = 'badge-desc';
-    descEl.textContent = desc;
-    card.appendChild(descEl);
-
-    if (isEarned) {
-      var label = document.createElement('span');
-      label.className = 'badge-progress-label badge-earned-label';
-      label.style.cssText =
-        'margin-top:4px;color:var(--primary-strong);font-weight:600;';
-      label.textContent = 'Earned';
-      card.appendChild(label);
-    }
-
-    return card;
-  }
-
-  function updateSectionCounts(
-    earnedBlock,
-    lockedBlock,
-    earnedIds,
-    totalBackendBadges,
-  ) {
-    var earnedCount = earnedIds.length;
-    var lockedCount = totalBackendBadges - earnedCount;
-
-    var earnedMeta = earnedBlock
-      ? earnedBlock.querySelector('.badge-section-meta')
-      : null;
-    var lockedMeta = lockedBlock
-      ? lockedBlock.querySelector('.badge-section-meta')
-      : null;
-
-    if (earnedMeta) earnedMeta.textContent = earnedCount + ' unlocked';
-    if (lockedMeta) lockedMeta.textContent = lockedCount + ' to go';
-  }
-
-  function checkBadgesLocally(badges, user) {
-    var stats = {
-      problemsSolved: Number(user.problemsSolved || 0),
-      answers: Number(user.answers || 0),
-      studyStreak: Number(user.studyStreak || 0),
-      reputationScore: Number(user.reputationScore || 0),
-    };
-    var existingIds = getStoredEarnedIds();
-    var newIds = [];
-    badges.forEach(function (b) {
-      var name = (b.name || '').trim().toLowerCase();
-      var id = b._id ? b._id.toString() : name;
-      if (!id || existingIds.indexOf(id) >= 0) return;
-      var earned = false;
-      if (name === 'first steps')
-        earned = stats.problemsSolved > 0 || stats.reputationScore > 0;
-      else if (name === 'problem solver') earned = stats.problemsSolved >= 10;
-      else if (name === '7-day streak') earned = stats.studyStreak >= 7;
-      else if (name === 'team player') earned = stats.answers >= 5;
-      else if (name === 'top contributor')
-        earned = stats.answers >= 10 || stats.reputationScore >= 100;
-      if (earned) newIds.push(id);
-    });
-    return newIds;
   }
 
   function renderIcon(icon) {
@@ -374,6 +85,73 @@ window.NibrasReact.run(function () {
       return '<img src="' + escapeHtml(icon) + '" alt="" class="badge-icon">';
     }
     return '<i class="' + escapeHtml(icon) + '" style="font-size:22px;"></i>';
+  }
+
+  function createBadgeBlock(title, meta) {
+    var div = document.createElement('div');
+    div.className = 'badge-block';
+    div.innerHTML = [
+      '<div class="badge-section-head">',
+      '<h3 class="badge-section-title">' + escapeHtml(title) + '</h3>',
+      '<span class="badge-section-meta">' + escapeHtml(meta) + '</span>',
+      '</div>',
+      '<div class="panel">',
+      '<div class="badge-grid"></div>',
+      '</div>',
+    ].join('');
+    return div;
+  }
+
+  function createBadgeCardElement(badge) {
+    var isEarned = !!badge.earnedAt;
+    var card = document.createElement('button');
+    card.type = 'button';
+    card.className =
+      'badge-card ' +
+      rarityClass(badge.rarity) +
+      ' ' +
+      (isEarned ? 'badge-card--earned' : 'badge-card--locked');
+    card.setAttribute('aria-pressed', isEarned ? 'true' : 'false');
+
+    var iconHolder = document.createElement('div');
+    iconHolder.className = 'badge-icon-holder';
+    iconHolder.innerHTML = renderIcon(badge.iconUrl);
+    card.appendChild(iconHolder);
+
+    var nameEl = document.createElement('strong');
+    nameEl.className = 'badge-name';
+    nameEl.textContent = badge.name || '';
+    card.appendChild(nameEl);
+
+    var descEl = document.createElement('span');
+    descEl.className = 'badge-desc';
+    descEl.textContent = badge.description || '';
+    card.appendChild(descEl);
+
+    if (isEarned) {
+      var earnedLabel = document.createElement('span');
+      earnedLabel.className = 'badge-progress-label badge-earned-label';
+      earnedLabel.style.cssText =
+        'margin-top:4px;color:var(--primary-strong);font-weight:600;';
+      earnedLabel.textContent = 'Earned';
+      card.appendChild(earnedLabel);
+    } else if (badge.threshold && badge.progress != null) {
+      var pct =
+        badge.threshold > 0
+          ? Math.min(100, Math.round((badge.progress / badge.threshold) * 100))
+          : 0;
+      var track = document.createElement('div');
+      track.className = 'badge-progress-track';
+      track.innerHTML =
+        '<div class="badge-progress-fill" style="width:' + pct + '%"></div>';
+      card.appendChild(track);
+      var progressLabel = document.createElement('span');
+      progressLabel.className = 'badge-progress-label';
+      progressLabel.textContent = badge.progress + ' / ' + badge.threshold;
+      card.appendChild(progressLabel);
+    }
+
+    return card;
   }
 
   function comingSoonHtml() {
@@ -393,88 +171,72 @@ window.NibrasReact.run(function () {
     ].join('');
   }
 
+  function renderBadgeSections(allBadges) {
+    if (!sectionsEl) return;
+
+    var earned = allBadges.filter(function (b) {
+      return !!b.earnedAt;
+    });
+    var locked = allBadges.filter(function (b) {
+      return !b.earnedAt;
+    });
+
+    sectionsEl.innerHTML = '';
+
+    if (earned.length > 0) {
+      var earnedBlock = createBadgeBlock('Earned', earned.length + ' unlocked');
+      var earnedGrid = earnedBlock.querySelector('.badge-grid');
+      earned.forEach(function (badge) {
+        earnedGrid.appendChild(createBadgeCardElement(badge));
+      });
+      sectionsEl.appendChild(earnedBlock);
+    }
+
+    if (locked.length > 0) {
+      var lockedBlock = createBadgeBlock('Locked', locked.length + ' to go');
+      var lockedGrid = lockedBlock.querySelector('.badge-grid');
+      locked.forEach(function (badge) {
+        lockedGrid.appendChild(createBadgeCardElement(badge));
+      });
+      sectionsEl.appendChild(lockedBlock);
+    }
+
+    if (earned.length === 0 && locked.length === 0) {
+      sectionsEl.innerHTML =
+        '<div class="panel" style="padding:2rem;text-align:center;color:var(--text-secondary);">No badges available yet.</div>';
+    } else {
+      sectionsEl.insertAdjacentHTML('beforeend', comingSoonHtml());
+    }
+  }
+
   function loadBadges() {
     showLoading();
     var services = window.NibrasServices;
-    if (!services) return;
+    if (!services || !services.gamificationService) return;
 
-    var repPromise = services.reputationService
-      ? services.reputationService
-          .getMyReputation()
-          .then(function (r) {
-            return r?.data?.total ?? r?.total ?? 0;
-          })
-          .catch(function () {
-            return 0;
-          })
-      : Promise.resolve(0);
+    services.gamificationService
+      .getAchievementsDashboard({ sync: true })
+      .then(function (dashboard) {
+        var allBadges = Array.isArray(dashboard?.badges) ? dashboard.badges : [];
+        var repTotal = dashboard?.reputation?.total || 0;
+        var earnedCount = allBadges.filter(function (b) {
+          return !!b.earnedAt;
+        }).length;
+        var legendaryCount = allBadges.filter(function (b) {
+          return b.rarity === 'legendary' && b.earnedAt;
+        }).length;
 
-    var badgesPromise = services.gamificationService
-      ? services.gamificationService
-          .getBadges()
-          .then(function (r) {
-            var data = r?.data || r || [];
-            if (Array.isArray(data) && data.length > 0) return data;
-            return services.gamificationService
-              .getAllBadges()
-              .then(function (r2) {
-                var data2 = r2?.data || r2 || [];
-                return Array.isArray(data2) && data2.length > 0
-                  ? data2
-                  : BACKEND_BADGES;
-              })
-              .catch(function () {
-                return BACKEND_BADGES;
-              });
-          })
-          .catch(function () {
-            return services.gamificationService
-              .getAllBadges()
-              .then(function (r2) {
-                var data2 = r2?.data || r2 || [];
-                return Array.isArray(data2) && data2.length > 0
-                  ? data2
-                  : BACKEND_BADGES;
-              })
-              .catch(function () {
-                return BACKEND_BADGES;
-              });
-          })
-      : Promise.resolve(BACKEND_BADGES);
-
-    var userPromise = services.usersService
-      ? services.usersService
-          .getMe()
-          .then(function (r) {
-            return r?.user || r || {};
-          })
-          .catch(function () {
-            return {};
-          })
-      : Promise.resolve({});
-
-    Promise.all([repPromise, userPromise, badgesPromise]).then(
-      function (results) {
-        var repTotal = results[0];
-        var user = results[1];
-        var allBadges = results[2];
-
-        var earnedIds;
-        var serverEarned = [];
-        if (allBadges.length > 0 && allBadges[0].earned !== undefined) {
-          allBadges.forEach(function (b) {
-            if (b.earned && b._id) serverEarned.push(b._id.toString());
-          });
-          earnedIds = serverEarned;
-        } else {
-          var newIds = checkBadgesLocally(allBadges, user);
-          earnedIds = addStoredEarnedIds(newIds);
-        }
-
-        renderStats(repTotal, allBadges.length, earnedIds.length);
-        annotateBadges(allBadges, earnedIds);
-      },
-    );
+        renderStats(repTotal, allBadges.length, earnedCount, legendaryCount);
+        renderBadgeSections(allBadges);
+      })
+      .catch(function () {
+        if (statsEl)
+          statsEl.innerHTML =
+            '<div class="stat-tile"><span class="stat-tile-label">Could not load achievements</span></div>';
+        if (sectionsEl)
+          sectionsEl.innerHTML =
+            '<div class="panel" style="padding:2rem;text-align:center;color:var(--text-secondary);">Could not load badges. Please try again later.</div>';
+      });
   }
 
   function initSocketBadgeListener() {
@@ -495,7 +257,7 @@ window.NibrasReact.run(function () {
           'position:fixed;bottom:24px;right:24px;z-index:99999;background:linear-gradient(135deg,#6c5ce7,#a855f7);color:#fff;padding:16px 24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;display:flex;align-items:center;gap:12px;animation:slideIn 0.3s ease;max-width:380px;';
         toast.innerHTML =
           '<i class="fa-solid fa-trophy" style="font-size:1.5rem;"></i><div><strong style="font-size:1rem;display:block;">Badge Unlocked!</strong><span style="opacity:0.9;font-size:0.9rem;">' +
-          badgeName +
+          escapeHtml(badgeName) +
           '</span></div>';
         document.body.appendChild(toast);
         setTimeout(function () {

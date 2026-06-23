@@ -99,15 +99,15 @@
                     <!-- Current Reputation -->
                     <section class="card current-rep-card">
                         <div class="cr-header">
-                            <span class="cr-val">1250</span>
+                            <span class="cr-val">0</span>
                             <span class="cr-label">Current Reputation</span>
                         </div>
-                        <div class="cr-status">Progress to Master</div>
+                        <div class="cr-status">Loading…</div>
                         
                         <div class="cr-track">
-                            <div class="cr-fill" style="width: 50%;"></div> <!-- 1250/2500 = 50% -->
+                            <div class="cr-fill" style="width: 0%;"></div>
                         </div>
-                        <p class="cr-info">You need 1250 more points for next level</p>
+                        <p class="cr-info">Loading reputation progress…</p>
                     </section>
 
                     <!-- Reputation Breakdown -->
@@ -195,6 +195,7 @@
         }
     </script>
     <script src="../../../react-bootstrap.js"></script>
+    <script src="../shared/gamification-constants.js"></script>
     <script src="./reputation.js"></script>
     <script src="../../services/gamification-ui.js"></script>
     <script>
