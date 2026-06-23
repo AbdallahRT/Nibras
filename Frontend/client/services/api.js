@@ -1481,8 +1481,8 @@
      * @returns {Promise<{question: string, hints: Array, tags: Array, finalAnswer: string}>}
      */
     async ask(question) {
-      return apiFetch('/v1/community/chatbot/ask', {
-        service: 'legacyCommunity',
+      return apiFetch('/chatbot/ask', {
+        service: 'admin',
         method: 'POST',
         auth: true,
         body: { question },
@@ -1497,8 +1497,8 @@
     async publish(data) {
       const payload = normalizePublishPayload(data);
       try {
-        return await apiFetch('/v1/community/chatbot/publish', {
-          service: 'legacyCommunity',
+        return await apiFetch('/chatbot/publish', {
+          service: 'admin',
           method: 'POST',
           auth: true,
           body: payload,
